@@ -666,9 +666,9 @@
             <div id="crono-onboard" style="display:none;"></div>
             <input type="file" id="crono-file-input" accept="image/*" style="display:none" onchange="cronoCarregarImagem(event)">
 
-            <!-- Container da planta — centralizado -->
-            <div id="crono-planta-container" style="display:none;position:relative;max-width:calc(100% - 28px);max-height:calc(100% - 60px);">
-              <img id="crono-planta-img" src="" alt="Planta" style="max-width:100%;max-height:calc(100vh - 160px);width:auto;height:auto;display:block;border-radius:6px;box-shadow:0 4px 24px rgba(0,0,0,.1);pointer-events:none;user-select:none;">
+            <!-- Container da planta — sem margens -->
+            <div id="crono-planta-container" style="display:none;position:relative;width:100%;height:100%;">
+              <img id="crono-planta-img" src="" alt="Planta" style="width:100%;height:100%;display:block;pointer-events:none;user-select:none;object-fit:contain;">
               <svg id="crono-draw-svg"></svg>
             </div>
 
