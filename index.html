@@ -737,9 +737,8 @@
 
               <div style="padding:18px;border-bottom:1px solid var(--border);">
                 <div style="font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">Trocar planta</div>
-                <div style="font-size:11px;color:var(--text2);margin-bottom:8px;">Substitui a imagem mantendo os locais cadastrados.</div>
-                <button onclick="document.getElementById('crono-file-troca').click()" style="padding:7px 14px;background:var(--surface);border:1px solid var(--border);border-radius:6px;font-size:12px;cursor:pointer;color:var(--text);">Selecionar nova imagem</button>
-                <input type="file" id="crono-file-troca" accept="image/*" style="display:none" onchange="cronoCarregarImagem(event)">
+                <div style="font-size:11px;color:var(--text2);margin-bottom:8px;">Substitua o arquivo no Google Drive — o site atualiza automaticamente para todos.</div>
+                <a href="https://drive.google.com/file/d/19wpWFQH5JIOQ7fSy_42cCmUSHAQG8l8C/view" target="_blank" style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:var(--surface);border:1px solid var(--border);border-radius:6px;font-size:12px;color:var(--text);text-decoration:none;">Abrir no Drive ↗</a>
               </div>
 
               <div style="padding:18px;border-bottom:1px solid var(--border);">
@@ -2614,10 +2613,12 @@ let cronoZonaAtiva     = null;
 // ── Variáveis de desenho ──
 let _drawAtivo = false, _drawStart = null, _drawRect = null;
 
+// ID da imagem da planta no Google Drive
+const PLANTA_FILE_ID = '19wpWFQH5JIOQ7fSy_42cCmUSHAQG8l8C';
+
 async function initCronograma() {
-  // Planta fica local (sessionStorage) pois é uma imagem grande
-  const p = sessionStorage.getItem('crono_planta_b64');
-  if (p) cronoMostrarPlanta(p);
+  // Carrega planta direto do Drive — igual para todo mundo
+  cronoMostrarPlanta(`https://drive.google.com/thumbnail?id=${PLANTA_FILE_ID}&sz=w2000`);
 
   // Locais vêm do Sheets — sincronizado para todos
   await cronoCarregarDoSheets();
@@ -2676,7 +2677,6 @@ function cronoMostrarPlanta(src) {
 //  MODO DESENHO
 // ════════════════════════════════════════════════════════
 function cronoToggleModo() {
-  if (!cronoEstado.plantaB64) { alert('Carregue a planta primeiro.'); return; }
   cronoModoAdicionar = !cronoModoAdicionar;
   document.getElementById('crono-modo-badge').style.display = cronoModoAdicionar ? 'flex' : 'none';
   document.getElementById('crono-btn-adicionar').textContent = cronoModoAdicionar ? '✕ Cancelar' : '+ Adicionar área';
