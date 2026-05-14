@@ -1,0 +1,3149 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard de Obra — Mané Mercado</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #f5f5f5; --surface: #ffffff; --surface2: #f8f8f8;
+    --border: #e8e8e8; --border2: #d4d4d4;
+    --text: #111111; --text2: #555555; --text3: #999999;
+    --green: #3B6D11; --green-bg: #EAF3DE;
+    --amber: #854F0B; --amber-bg: #FAEEDA;
+    --red: #A32D2D; --red-bg: #FCEBEB;
+    --blue: #185FA5; --blue-bg: #E6F1FB;
+    --radius: 8px; --radius-sm: 6px;
+    --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  }
+  body { font-family: var(--font); background: var(--bg); color: var(--text); font-size: 14px; min-height: 100vh; }
+  #setup-screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+  .setup-box { background: var(--surface); border: 1px solid var(--border2); border-radius: 12px; padding: 2.5rem; max-width: 460px; width: 90%; }
+  .setup-title { font-size: 20px; font-weight: 600; margin-bottom: 4px; }
+  .setup-sub { font-size: 13px; color: var(--text2); margin-bottom: 1.75rem; }
+  .setup-label { font-size: 12px; font-weight: 600; color: var(--text2); margin-bottom: 6px; display: block; }
+  .setup-input { width: 100%; padding: 9px 12px; border: 1px solid var(--border2); border-radius: var(--radius-sm); font-size: 13px; font-family: monospace; background: var(--surface2); color: var(--text); margin-bottom: 12px; outline: none; }
+  .setup-input:focus { border-color: #1D9E75; }
+  .setup-btn { width: 100%; padding: 11px; background: #1D9E75; color: white; border: none; border-radius: var(--radius-sm); font-size: 14px; font-weight: 600; cursor: pointer; }
+  .setup-btn:hover { background: #178a65; }
+  .setup-hint { font-size: 12px; color: var(--text3); margin-top: 1rem; line-height: 1.6; }
+  .setup-error { font-size: 12px; color: var(--red); margin-bottom: 8px; display: none; }
+  #dashboard { display: none; }
+  .topbar { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 1.5rem; display: flex; align-items: center; justify-content: space-between; height: 52px; position: sticky; top: 0; z-index: 100; }
+  .topbar-title { font-size: 16px; font-weight: 600; }
+  .topbar-right { display: flex; gap: 8px; align-items: center; }
+  .topbar-pipe { font-size: 12px; color: var(--text3); }
+  .btn-sm { font-size: 12px; padding: 5px 12px; border: 1px solid var(--border2); border-radius: var(--radius-sm); background: transparent; color: var(--text2); cursor: pointer; }
+  .btn-sm:hover { background: var(--surface2); }
+  .btn-sm.danger { color: #A32D2D; }
+  .main { padding: 1.5rem; max-width: 1400px; margin: 0 auto; }
+  .page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.25rem; }
+  .page-title { font-size: 20px; font-weight: 600; margin-bottom: 2px; }
+  .page-sub { font-size: 13px; color: var(--text2); }
+  .updated { font-size: 12px; color: var(--text3); }
+  #loading { display: flex; flex-direction: column; align-items: center; padding: 4rem; gap: 12px; }
+  .spinner { width: 28px; height: 28px; border: 3px solid var(--border2); border-top-color: #1D9E75; border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text { font-size: 13px; color: var(--text2); }
+  .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px,1fr)); gap: 12px; margin-bottom: 1.25rem; }
+  .metric { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.25rem; }
+  .metric-label { font-size: 12px; color: var(--text2); margin-bottom: 6px; }
+  .metric-value { font-size: 26px; font-weight: 500; color: var(--text); letter-spacing: -0.5px; line-height: 1.1; }
+  .metric-sub { font-size: 12px; color: var(--text3); margin-top: 4px; }
+  .metric-value.red { color: #E24B4A; }
+  .metric-value.amber { color: #BA7517; }
+  .metric-value.green { color: #3B6D11; }
+  .banner { border-radius: var(--radius); padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; }
+  .banner-red { background: var(--red-bg); border: 1px solid #f7c1c1; }
+  .banner-blue { background: var(--blue-bg); border: 1px solid #b5d4f4; }
+  .banner-label { font-size: 13px; font-weight: 600; }
+  .banner-label.red { color: #A32D2D; } .banner-label.blue { color: var(--blue); }
+  .banner-sub { font-size: 12px; margin-top: 2px; opacity: 0.85; }
+  .banner-sub.red { color: #A32D2D; } .banner-sub.blue { color: var(--blue); }
+  .banner-val { font-size: 20px; font-weight: 600; }
+  .banner-val.red { color: #A32D2D; } .banner-val.blue { color: var(--blue); }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; margin-bottom: 1.25rem; }
+  .card-title { font-size: 12px; font-weight: 500; color: var(--text2); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem; }
+  .filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 1rem; align-items: center; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; }
+  .filter-group { display: flex; align-items: center; gap: 5px; }
+  .filter-label { font-size: 12px; color: var(--text2); white-space: nowrap; font-weight: 500; }
+  .filter-select, .filter-input, .filter-date { font-size: 12px; padding: 5px 8px; border: 1px solid var(--border2); border-radius: var(--radius-sm); background: var(--surface2); color: var(--text); height: 30px; outline: none; }
+  .filter-select:focus, .filter-input:focus, .filter-date:focus { border-color: #1D9E75; }
+  .filter-input { width: 140px; }
+  .filter-date { width: 130px; }
+  .filter-sep { font-size: 12px; color: var(--text3); }
+  .btn-clear { font-size: 12px; padding: 5px 10px; height: 30px; border: 1px solid var(--border2); border-radius: var(--radius-sm); background: transparent; color: var(--text3); cursor: pointer; }
+  .btn-clear:hover { background: var(--surface2); }
+  .mini-metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px,1fr)); gap: 8px; margin-bottom: 1rem; }
+  .mini-metric { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 12px; }
+  .mini-label { font-size: 11px; color: var(--text2); margin-bottom: 4px; }
+  .mini-val { font-size: 16px; font-weight: 500; color: var(--text); }
+  .mini-val.red { color: #E24B4A; } .mini-val.amber { color: #BA7517; } .mini-val.green { color: #3B6D11; }
+  .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead th { background: var(--surface2); padding: 9px 12px; text-align: left; font-size: 11px; color: var(--text2); font-weight: 600; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  thead th.sortable { cursor: pointer; user-select: none; }
+  thead th.sortable:hover { background: #efefef; color: var(--text); }
+  thead th.sort-asc::after  { content: ' ↑'; color: #1D9E75; }
+  thead th.sort-desc::after { content: ' ↓'; color: #1D9E75; }
+  tbody td { padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; color: var(--text); }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover td { background: var(--surface2); }
+  tfoot td { padding: 10px 12px; font-weight: 600; background: var(--surface2); border-top: 1px solid var(--border2); }
+  .td-right { text-align: right; } .td-center { text-align: center; }
+  .td-title { font-weight: 500; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .td-sub { font-size: 11px; color: var(--text3); margin-top: 2px; }
+  .badge { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 4px; font-weight: 500; white-space: nowrap; }
+  .badge-red { background: var(--red-bg); color: var(--red); }
+  .badge-amber { background: var(--amber-bg); color: var(--amber); }
+  .badge-green { background: var(--green-bg); color: var(--green); }
+  .badge-gray { background: var(--surface2); color: var(--text2); border: 1px solid var(--border); }
+  .badge-blue { background: var(--blue-bg); color: var(--blue); }
+  .link-card { color: var(--blue); text-decoration: none; font-size: 12px; font-weight: 500; }
+  .link-card:hover { text-decoration: underline; }
+  .chart-wrap { position: relative; width: 100%; }
+  .chart-legend { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 10px; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text2); }
+  .legend-dot { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+  .status-info { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.25rem; margin-bottom: 1.25rem; font-size: 12px; color: var(--text2); line-height: 1.8; }
+  .status-info strong { color: var(--text); }
+  @media (max-width: 700px) { .main { padding: 1rem; } .metrics { grid-template-columns: 1fr 1fr; } }
+
+  /* ── Tabs ── */
+  .topbar-left { display:flex; align-items:center; gap:0; height:100%; }
+  .topbar-title { font-size:15px; font-weight:600; margin-right:1.5rem; white-space:nowrap; }
+  .tab-btn { height:52px; padding:0 16px; background:none; border:none; border-bottom:2px solid transparent; font-size:13px; font-weight:500; color:var(--text2); cursor:pointer; white-space:nowrap; transition:color .15s,border-color .15s; }
+  .tab-btn:hover { color:var(--text); }
+  .tab-btn.active { color:#1D9E75; border-bottom-color:#1D9E75; font-weight:600; }
+  .tab-badge { display:inline-block; background:#EAF3DE; color:#3B6D11; font-size:10px; font-weight:700; padding:1px 6px; border-radius:10px; margin-left:5px; vertical-align:middle; }
+  .tab-panel { display:none; }
+  .tab-panel.active { display:block; }
+
+  /* ── Cronograma — Áreas clicáveis ── */
+  .crono-zona {
+    position:absolute; cursor:pointer; border-radius:4px;
+    border:2px solid transparent; transition:background .18s, border-color .18s;
+    z-index:10;
+  }
+  .crono-zona:hover, .crono-zona.active {
+    background:rgba(196,113,74,.18); border-color:rgba(196,113,74,.6);
+  }
+  .crono-zona.active { background:rgba(196,113,74,.22); border-color:#C4714A; }
+
+  /* Tooltip da zona */
+  .crono-zona-tip {
+    position:absolute; bottom:calc(100% + 8px); left:50%; transform:translateX(-50%);
+    background:#1C1A17; color:white; font-size:11px; font-weight:500;
+    padding:5px 11px; border-radius:20px; white-space:nowrap;
+    opacity:0; pointer-events:none; transition:opacity .15s; z-index:20;
+    display:flex; align-items:center; gap:6px;
+  }
+  .crono-zona-tip::after {
+    content:''; position:absolute; top:100%; left:50%; transform:translateX(-50%);
+    border:5px solid transparent; border-top-color:#1C1A17;
+  }
+  .crono-zona:hover .crono-zona-tip, .crono-zona.active .crono-zona-tip { opacity:1; }
+  .crono-zona-tip-badge {
+    background:rgba(255,255,255,.2); font-size:10px; font-weight:700;
+    padding:1px 6px; border-radius:10px;
+  }
+
+  /* Badge de contagem fixo no canto da zona */
+  .crono-zona-badge {
+    position:absolute; top:-7px; right:-7px;
+    background:#C4714A; color:white; font-size:9px; font-weight:700;
+    min-width:18px; height:18px; border-radius:9px; padding:0 4px;
+    display:none; align-items:center; justify-content:center;
+    border:2px solid white; box-shadow:0 1px 4px rgba(0,0,0,.2);
+  }
+
+  /* Handle de resize no canto inferior direito */
+  .crono-zona-handle {
+    position:absolute; bottom:-4px; right:-4px;
+    width:12px; height:12px; border-radius:3px;
+    background:#C4714A; cursor:se-resize; opacity:0; transition:opacity .15s;
+    z-index:25;
+  }
+  .crono-zona:hover .crono-zona-handle { opacity:1; }
+
+  /* Retângulo de desenho em progresso */
+  #crono-draw-rect { display:none; }
+  #crono-draw-svg {
+    position:absolute; inset:0; width:100%; height:100%;
+    pointer-events:none; z-index:30; overflow:visible;
+  }
+  #crono-draw-svg.modo-desenho {
+    pointer-events:all; cursor:crosshair;
+  }
+  .crono-draw-preview {
+    fill:rgba(196,113,74,.12); stroke:#C4714A;
+    stroke-width:1.5; stroke-dasharray:5 3;
+  }
+  .crono-draw-dot {
+    fill:white; stroke:#C4714A; stroke-width:2; cursor:pointer;
+  }
+  .crono-draw-dot.first { fill:#C4714A; }
+  .crono-draw-cursor {
+    stroke:#C4714A; stroke-width:1; stroke-dasharray:4 3; opacity:.7;
+  }
+  /* Zonas como SVG polygon */
+  .crono-zona-svg {
+    fill:rgba(196,113,74,0); stroke:rgba(196,113,74,0);
+    stroke-width:2; transition:fill .15s,stroke .15s;
+    cursor:pointer; pointer-events:all;
+  }
+  .crono-zona-svg:hover { fill:rgba(196,113,74,.15); stroke:rgba(196,113,74,.5); }
+  .crono-zona-svg.active { fill:rgba(196,113,74,.22); stroke:#C4714A; stroke-width:2.5; }
+  .crono-zona-label {
+    pointer-events:none; font-size:12px; font-weight:600;
+    fill:#1C1A17; paint-order:stroke; stroke:white; stroke-width:3px; stroke-linejoin:round;
+    opacity:0; transition:opacity .15s; text-anchor:middle; dominant-baseline:middle;
+  }
+  .crono-zona-group:hover .crono-zona-label,
+  .crono-zona-group.active .crono-zona-label { opacity:1; }
+
+  /* Timeline agrupada por mês */
+  .crono-mes-grupo { margin-bottom:4px; }
+  .crono-mes-header {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:10px 0 6px; border-bottom:1px solid var(--border);
+    margin-bottom:8px; position:sticky; top:0;
+    background:white; z-index:5;
+  }
+  .crono-mes-label {
+    font-size:11px; font-weight:700; color:#C4714A;
+    text-transform:uppercase; letter-spacing:.07em;
+  }
+  .crono-mes-count { font-size:10px; color:var(--text3); font-weight:500; }
+  .crono-tl-item { padding:0 0 14px; animation:fadeUp .2s ease both; }
+  .crono-tl-img {
+    width:100%; border-radius:6px; aspect-ratio:4/3; object-fit:cover;
+    cursor:pointer; transition:opacity .15s; background:var(--surface2); display:block;
+  }
+  .crono-tl-img:hover { opacity:.88; }
+  .crono-tl-name { font-size:11px; color:var(--text2); margin-top:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .crono-carregar-mais {
+    width:100%; margin-top:4px; padding:9px; background:var(--surface2);
+    border:1px solid var(--border); border-radius:6px; font-size:12px;
+    color:var(--text2); cursor:pointer; font-weight:500; transition:background .15s;
+  }
+  .crono-carregar-mais:hover { background:var(--border); }
+
+  /* ── Tabs do painel lateral ── */
+  .crono-ptab { flex:1;padding:13px 6px;font-size:12px;font-weight:500;color:var(--text2);background:none;border:none;border-bottom:2px solid transparent;cursor:pointer;transition:all .15s;font-family:inherit; }
+  .crono-ptab.active { color:#C4714A;border-bottom-color:#C4714A; }
+  .crono-ptab:hover:not(.active) { color:var(--text); }
+  .crono-pane { display:none;flex:1;overflow:hidden; }
+  .crono-pane.active { display:flex; }
+  .crono-local-item { display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .12s; }
+  .crono-local-item:hover { background:var(--surface2); }
+  .crono-local-item.active { background:#FDF5F0; }
+  .crono-local-num { width:24px;height:24px;border-radius:50%;background:#C4714A;color:white;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0; }
+  .crono-local-actions { display:flex;gap:2px;opacity:0;transition:opacity .15s; }
+  .crono-local-item:hover .crono-local-actions { opacity:1; }
+  .crono-lightbox { position:fixed;inset:0;background:rgba(0,0,0,.95);z-index:2000;display:none;flex-direction:column;align-items:center;justify-content:center;cursor:pointer; }
+  .crono-lightbox.open { display:flex; }
+  .crono-lightbox img { max-width:100vw;max-height:calc(100vh - 90px);object-fit:contain;border-radius:0;cursor:default;position:relative;z-index:1; }
+  .crono-lb-close { position:absolute;top:14px;right:18px;color:white;font-size:38px;cursor:pointer;line-height:1;opacity:.7;transition:opacity .15s;z-index:3; }
+  .crono-lb-close:hover { opacity:1; }
+  .crono-lb-info { position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,.8));padding:32px 24px 18px;display:flex;align-items:flex-end;justify-content:space-between;gap:12px;pointer-events:none;z-index:2; }
+  .crono-lb-nome { color:white;font-size:14px;font-weight:600;max-width:70%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+  .crono-lb-data { color:rgba(255,255,255,.65);font-size:12px;font-weight:500;white-space:nowrap; }
+  .crono-lb-nav { position:absolute;top:50%;transform:translateY(-50%);background:rgba(255,255,255,.15);border:none;color:white;font-size:32px;width:52px;height:72px;display:flex;align-items:center;justify-content:center;cursor:pointer;border-radius:8px;transition:background .15s;user-select:none;z-index:3; }
+  .crono-lb-nav:hover { background:rgba(255,255,255,.3); }
+  .crono-lb-prev { left:14px; }
+  .crono-lb-next { right:14px; }
+  .crono-lb-counter { position:absolute;top:16px;left:50%;transform:translateX(-50%);color:rgba(255,255,255,.65);font-size:12px;font-weight:500;background:rgba(0,0,0,.5);padding:4px 12px;border-radius:20px;z-index:3;pointer-events:none; }
+
+
+
+
+  /* ── Aprovação ── */
+  .aprov-grid { display:grid; grid-template-columns:1fr; gap:12px; }
+  .aprov-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; transition:box-shadow .2s; }
+  .aprov-card:hover { box-shadow:0 4px 16px rgba(0,0,0,.08); }
+  .aprov-card-header { padding:0; display:flex; align-items:stretch; cursor:pointer; user-select:none; }
+  .aprov-card-urgency { width:5px; flex-shrink:0; border-radius:var(--radius) 0 0 var(--radius); }
+  .aprov-card-header-inner { flex:1; padding:14px 16px; display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+  .aprov-card-header-inner:hover { background:var(--surface2); }
+  .aprov-card-title { font-size:14px; font-weight:600; line-height:1.35; color:var(--text); }
+  .aprov-card-meta { display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin-top:7px; }
+  .aprov-dias { display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:700; padding:3px 8px; border-radius:10px; }
+  .aprov-dias.urgente  { background:#FDEAEA; color:#A32D2D; }
+  .aprov-dias.atencao  { background:#FFF3CD; color:#7A5800; }
+  .aprov-dias.normal   { background:var(--surface2); color:var(--text2); }
+  .aprov-chevron { font-size:11px; color:var(--text3); transition:transform .2s; margin-top:3px; flex-shrink:0; }
+  .aprov-card.open .aprov-chevron { transform:rotate(180deg); }
+  .aprov-body { display:none; border-top:1px solid var(--border); }
+  .aprov-card.open .aprov-body { display:block; }
+  .aprov-body-inner { padding:18px 20px; }
+  .aprov-section { margin-bottom:20px; }
+  .aprov-section:last-child { margin-bottom:0; }
+  .aprov-section-title { font-size:10px; font-weight:700; color:var(--text3); text-transform:uppercase; letter-spacing:.08em; margin-bottom:10px; display:flex; align-items:center; gap:8px; }
+  .aprov-section-title::after { content:''; flex:1; height:1px; background:var(--border); }
+  .aprov-fields { display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:8px; }
+  .aprov-field { background:var(--surface2); border:1px solid var(--border); border-radius:var(--radius-sm); padding:9px 11px; }
+  .aprov-field-label { font-size:10px; color:var(--text3); font-weight:600; text-transform:uppercase; letter-spacing:.04em; margin-bottom:3px; }
+  .aprov-field-value { font-size:13px; color:var(--text); font-weight:500; word-break:break-word; }
+  .aprov-field-value.big { color:#185FA5; font-size:17px; font-weight:700; }
+  .cotacao-tbl { width:100%; border-collapse:collapse; font-size:12px; }
+  .cotacao-tbl th { background:var(--surface2); padding:7px 10px; text-align:left; font-size:10px; color:var(--text2); font-weight:700; text-transform:uppercase; letter-spacing:.04em; border-bottom:1px solid var(--border); }
+  .cotacao-tbl th.td-right { text-align:right; }
+  .cotacao-tbl td { padding:8px 10px; border-bottom:1px solid var(--border); vertical-align:middle; }
+  .cotacao-tbl tr:last-child td { border-bottom:none; }
+  .cotacao-tbl tr:hover td { background:var(--surface2); }
+  .attach-list { display:flex; flex-wrap:wrap; gap:8px; }
+  .attach-btn { display:flex; align-items:center; gap:7px; background:var(--surface2); border:1px solid var(--border2); border-radius:var(--radius-sm); padding:8px 12px; font-size:12px; color:var(--blue); cursor:pointer; transition:background .15s; text-decoration:none; max-width:300px; }
+  .attach-btn:hover { background:var(--blue-bg); border-color:#b5d4f4; }
+  .attach-btn-name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:500; }
+  .aprov-empty { text-align:center; padding:5rem 2rem; color:var(--text3); font-size:13px; }
+  .btn-aprov { padding:9px 18px; border:none; border-radius:var(--radius-sm); font-size:13px; font-weight:600; cursor:pointer; transition:all .15s; display:inline-flex; align-items:center; gap:6px; }
+  .btn-aprov:disabled { opacity:.5; cursor:not-allowed; }
+  .btn-aprov.aprovar { background:#EAF3DE; color:#2a5008; border:1px solid #c4e0a0; }
+  .btn-aprov.aprovar:hover:not(:disabled) { background:#d4ebba; }
+  .btn-aprov.reprovar { background:#FDEAEA; color:#7A1C1C; border:1px solid #f5c6c6; }
+  .btn-aprov.reprovar:hover:not(:disabled) { background:#f5c6c6; }
+  .aprov-filter-bar { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:1rem; align-items:center; }
+  .aprov-filter-btn { padding:5px 12px; border:1px solid var(--border2); border-radius:20px; background:var(--surface); font-size:12px; font-weight:500; color:var(--text2); cursor:pointer; transition:all .15s; }
+  .aprov-filter-btn:hover { background:var(--surface2); }
+  .aprov-filter-btn.active { background:#185FA5; color:#fff; border-color:#185FA5; }
+  .aprov-metrics-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px; margin-bottom:1.25rem; }
+  .aprov-metric-box { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:16px 18px; border-left:3px solid transparent; }
+  .aprov-metric-icon { font-size:22px; margin-bottom:8px; }
+  .aprov-metric-val  { font-size:24px; font-weight:700; line-height:1; }
+  .aprov-metric-label { font-size:11px; color:var(--text2); margin-top:5px; font-weight:500; }
+  .aprov-metric-sub  { font-size:11px; color:var(--text3); margin-top:3px; }
+</style>
+</head>
+<body>
+
+<div id="setup-screen">
+  <div class="setup-box">
+    <div class="setup-title">Mané Mercado</div>
+    <div class="setup-sub">Dashboard de Controle de Obra</div>
+    <label class="setup-label">Token do Pipefy</label>
+    <input type="password" id="token-input" class="setup-input" placeholder="Cole seu token aqui..." autocomplete="off">
+    <div class="setup-error" id="setup-error">Token inválido ou sem acesso ao pipe. Verifique e tente novamente.</div>
+    <button class="setup-btn" onclick="iniciar()">Entrar no dashboard</button>
+    <div class="setup-hint">Token salvo apenas neste navegador.<br>Pipe: <strong>[Partage] Compras Obras</strong> · ID 305908726</div>
+  </div>
+</div>
+
+<div id="dashboard">
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="topbar-title">Mané Mercado</div>
+      <button class="tab-btn active" onclick="trocarAba('visao-geral',this)">Visão Geral</button>
+      <button class="tab-btn" onclick="trocarAba('janelas',this)">Janelas de Pagamento</button>
+      <button class="tab-btn" onclick="trocarAba('detalhamento',this)">Detalhamento de Cards</button>
+      <button class="tab-btn" onclick="trocarAba('aprovacao',this)">Aprovação Obra <span class="tab-badge" id="badge-aprov">0</span></button>
+      <button class="tab-btn" onclick="trocarAba('cronograma',this)">Planta da obra</button>
+    </div>
+    <div class="topbar-right">
+      <span class="topbar-pipe" id="topbar-pipe">Carregando...</span>
+      <button class="btn-sm" onclick="carregarDados()">↻ Atualizar</button>
+      <button class="btn-sm danger" onclick="sair()">Sair</button>
+    </div>
+  </div>
+
+  <div class="main">
+    <div id="loading"><div class="spinner"></div><div class="loading-text" id="loading-text">Buscando dados do Pipefy...</div></div>
+
+    <div id="conteudo" style="display:none;">
+
+      <!-- ══ ABA VISÃO GERAL ══ -->
+      <div class="tab-panel active" id="panel-visao-geral">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Controle de obra — Mané Mercado</div>
+          <div class="page-sub" id="page-sub">Carregando...</div>
+        </div>
+        <div class="updated" id="updated-at"></div>
+      </div>
+
+      <div class="metrics" id="metrics-globais"></div>
+
+      <div id="saldo-info" style="padding:8px 4px;margin-bottom:1rem;display:flex;align-items:center;flex-wrap:wrap;gap:4px;"></div>
+
+      <div class="card" id="orcamento-bar" style="padding:1rem 1.25rem;margin-bottom:1rem;"></div>
+
+      <div class="card" id="cronograma-bar" style="padding:1rem 1.25rem;margin-bottom:1.25rem;"></div>
+
+      <div id="alert-atrasadas" class="banner banner-red" style="display:none;">
+        <div>
+          <div class="banner-label red">⚠️ Atenção</div>
+          <div class="banner-sub red" id="alert-atrasadas-sub"></div>
+        </div>
+        <div class="banner-val red" id="alert-atrasadas-val"></div>
+      </div>
+
+      <!-- Gráfico Fechado vs Gasto por mês -->
+      <div class="card" style="padding:0;margin-bottom:1.25rem;overflow:hidden;">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:1rem 1.25rem 0.75rem;flex-wrap:wrap;gap:8px;">
+          <div>
+            <div class="card-title" style="margin:0;">Fechado vs. Gasto por mês</div>
+            <div style="font-size:12px;color:var(--text3);margin-top:3px;">Quanto comprometemos de serviço × quanto efetivamente pagamos</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <span class="filter-label">De</span>
+            <select class="filter-select" id="fg-mes-de" onchange="renderChartFechadoGasto()">
+              <option value="01">Jan</option><option value="02">Fev</option><option value="03">Mar</option>
+              <option value="04">Abr</option><option value="05">Mai</option><option value="06">Jun</option>
+              <option value="07">Jul</option><option value="08">Ago</option><option value="09">Set</option>
+              <option value="10">Out</option><option value="11">Nov</option><option value="12">Dez</option>
+            </select>
+            <select class="filter-select" id="fg-ano-de" onchange="renderChartFechadoGasto()"></select>
+            <span class="filter-label">Até</span>
+            <select class="filter-select" id="fg-mes-ate" onchange="renderChartFechadoGasto()">
+              <option value="01">Jan</option><option value="02">Fev</option><option value="03">Mar</option>
+              <option value="04">Abr</option><option value="05">Mai</option><option value="06">Jun</option>
+              <option value="07">Jul</option><option value="08">Ago</option><option value="09">Set</option>
+              <option value="10">Out</option><option value="11">Nov</option><option value="12">Dez</option>
+            </select>
+            <select class="filter-select" id="fg-ano-ate" onchange="renderChartFechadoGasto()"></select>
+          </div>
+        </div>
+        <div style="padding:0 20px 10px 20px;position:relative;height:300px;">
+          <canvas id="chartFechadoGasto"></canvas>
+        </div>
+        <div style="display:flex;align-items:center;gap:20px;padding:0 24px 14px;flex-wrap:wrap;">
+          <div style="display:flex;align-items:center;gap:7px;font-size:12px;color:var(--text2);">
+            <div style="width:14px;height:14px;border-radius:3px;background:#9CA3AF;"></div>Fechado no mês (comprometido)
+          </div>
+          <div style="display:flex;align-items:center;gap:7px;font-size:12px;color:var(--text2);">
+            <div style="width:14px;height:14px;border-radius:3px;background:#1a3a5c;"></div>Gasto no mês (vencimento)
+          </div>
+          <div id="fg-delta-info" style="margin-left:auto;font-size:12px;color:var(--text3);"></div>
+        </div>
+      </div>
+
+      <!-- Tabela Linhas de Orçamento -->
+      <div class="card" style="padding:1rem 1.25rem;margin-bottom:1.25rem;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+          <div class="card-title" style="margin:0;">Controle por Linha de Orçamento — OBRA</div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <input type="text" id="busca-linha" placeholder="Buscar linha..." oninput="renderLinhasOrcamento(window._cardsP||[])"
+              style="padding:6px 10px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:12px;background:var(--surface2);color:var(--text);outline:none;width:160px;">
+            <select id="filtro-linha-status" onchange="renderLinhasOrcamento(window._cardsP||[])"
+              style="padding:6px 10px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:12px;background:var(--surface2);color:var(--text);outline:none;">
+              <option value="all">Todas as linhas</option>
+              <option value="com">Com lançamentos</option>
+              <option value="sem">Sem lançamentos</option>
+              <option value="critico">Acima do orçamento</option>
+            </select>
+          </div>
+        </div>
+        <div class="table-wrap" style="margin:0;">
+          <table>
+            <thead><tr>
+              <th onclick="sortLinhas('nome')" style="cursor:pointer;user-select:none;">Classificação <span id="sort-icon-nome">↕</span></th>
+              <th class="td-right" onclick="sortLinhas('orc')" style="cursor:pointer;user-select:none;">Orçamento <span id="sort-icon-orc">↕</span></th>
+              <th class="td-right" onclick="sortLinhas('cont')" style="cursor:pointer;user-select:none;">Contratado <span id="sort-icon-cont">↕</span></th>
+              <th class="td-right" onclick="sortLinhas('disp')" style="cursor:pointer;user-select:none;">Disponível <span id="sort-icon-disp">↕</span></th>
+              <th class="td-right" onclick="sortLinhas('real')" style="cursor:pointer;user-select:none;">Realizado <span id="sort-icon-real">↕</span></th>
+              <th class="td-right" onclick="sortLinhas('pct')" style="cursor:pointer;user-select:none;">% do Total <span id="sort-icon-pct">↕</span></th>
+            </tr></thead>
+            <tbody id="linhas-body"></tbody>
+            <tfoot id="linhas-foot"></tfoot>
+          </table>
+        </div>
+      </div>
+
+      </div><!-- /panel-visao-geral -->
+
+      <!-- ══ ABA JANELAS DE PAGAMENTO ══ -->
+      <div class="tab-panel" id="panel-janelas">
+        <div class="page-header">
+          <div>
+            <div class="page-title">Janelas de Pagamento</div>
+            <div class="page-sub">Calendário de vencimentos, agendamentos e todos os cards</div>
+          </div>
+        </div>
+
+        <!-- hidden holders mantidos para o JS não quebrar -->
+        <div id="janelas-metrics-filtro" style="display:none;"></div>
+        <div class="mini-metrics" id="mini-metrics" style="display:none;"></div>
+        <div class="metrics" id="janelas-metrics" style="display:none;"></div>
+
+        <!-- GRÁFICO -->
+        <div class="card" style="padding:0;margin-bottom:1.25rem;overflow:hidden;">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:1rem 1.25rem 0.75rem;flex-wrap:wrap;gap:8px;">
+            <div class="card-title" style="margin:0;">Previsão de pagamentos por janela</div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span class="filter-label">Mês</span>
+              <select class="filter-select" id="f-mes-grafico" onchange="renderChartJanelas(window._cardsP||[])">
+                <option value="01">Janeiro</option><option value="02">Fevereiro</option>
+                <option value="03">Março</option><option value="04">Abril</option>
+                <option value="05">Maio</option><option value="06">Junho</option>
+                <option value="07">Julho</option><option value="08">Agosto</option>
+                <option value="09">Setembro</option><option value="10">Outubro</option>
+                <option value="11">Novembro</option><option value="12">Dezembro</option>
+              </select>
+              <select class="filter-select" id="f-ano-grafico" onchange="renderChartJanelas(window._cardsP||[])">
+              </select>
+            </div>
+          </div>
+          <div id="chart-janelas-wrap" style="position:relative;height:320px;padding:10px 20px 50px 20px;">
+            <canvas id="chartJanelas" style="display:block;"></canvas>
+            <div id="chart-janelas-empty" style="display:none;position:absolute;inset:0;align-items:center;justify-content:center;color:var(--text3);font-size:13px;">Nenhum vencimento encontrado para este mês.</div>
+          </div>
+          <div style="display:flex;gap:20px;padding:0 24px 12px;">
+            <div style="display:flex;align-items:center;gap:7px;font-size:12px;color:var(--text2);">
+              <svg width="28" height="10"><line x1="0" y1="5" x2="28" y2="5" stroke="#185FA5" stroke-width="2.5"/></svg>Pago / vencido
+            </div>
+            <div style="display:flex;align-items:center;gap:7px;font-size:12px;color:var(--text2);">
+              <svg width="28" height="10"><line x1="0" y1="5" x2="28" y2="5" stroke="#185FA5" stroke-width="2" stroke-dasharray="6,4"/></svg>Agendado (futuro)
+            </div>
+          </div>
+          <div id="janelas-resumo-mes"></div>
+        </div>
+
+        <!-- TABELA SIMPLIFICADA DA JANELA -->
+        <div id="janelas-lista" style="display:none;"></div>
+        <div class="card" style="padding:1rem 1.25rem;margin-bottom:1.25rem;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+            <div class="card-title" style="margin:0;">Cards da janela</div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span class="filter-label" style="white-space:nowrap;">Período</span>
+              <input type="date" class="filter-date" id="fj-de" onchange="renderTabelaJanela()" title="Deixe vazio para usar o mês do gráfico">
+              <span class="filter-sep">até</span>
+              <input type="date" class="filter-date" id="fj-ate" onchange="renderTabelaJanela()">
+              <button class="btn-clear" onclick="limparFiltroJanela()">Limpar</button>
+            </div>
+          </div>
+          <div id="fj-aviso" style="font-size:11px;color:var(--text3);margin-bottom:8px;display:none;">
+            📅 Exibindo cards do mês selecionado no gráfico. Preencha o período acima para filtrar por datas específicas.
+          </div>
+          <div class="table-wrap" style="margin:0;">
+            <table>
+              <thead><tr>
+                <th class="sortable" onclick="sortJanela('id')"        id="jth-id">Nº Card</th>
+                <th class="sortable" onclick="sortJanela('titulo')"    id="jth-titulo">Título</th>
+                <th class="sortable" onclick="sortJanela('cc_sap')"    id="jth-cc_sap">CC SAP</th>
+                <th class="sortable" onclick="sortJanela('nf')"        id="jth-nf">Nº NF</th>
+                <th class="sortable" onclick="sortJanela('venc')"      id="jth-venc">Vencimento</th>
+                <th class="sortable" onclick="sortJanela('pgto')"      id="jth-pgto">Forma pgto</th>
+                <th class="sortable td-right" onclick="sortJanela('valor')" id="jth-valor">Valor NF</th>
+                <th class="td-center">Link</th>
+              </tr></thead>
+              <tbody id="janela-tabela-body"></tbody>
+              <tfoot id="janela-tabela-foot"></tfoot>
+            </table>
+          </div>
+        </div>
+
+      </div><!-- /panel-janelas -->
+
+      <!-- ══ ABA DETALHAMENTO DE CARDS ══ -->
+      <div class="tab-panel" id="panel-detalhamento">
+        <div class="page-header">
+          <div>
+            <div class="page-title">Detalhamento de Cards</div>
+            <div class="page-sub">Todos os cards com filtros avançados</div>
+          </div>
+        </div>
+
+        <div class="filters" style="margin-bottom:1rem;flex-wrap:wrap;row-gap:8px;">
+          <div class="filter-group">
+            <span class="filter-label">Vencimento</span>
+            <input type="date" class="filter-date" id="f-de" onchange="detPagina=1;renderTabela()">
+            <span class="filter-sep">até</span>
+            <input type="date" class="filter-date" id="f-ate" onchange="detPagina=1;renderTabela()">
+          </div>
+          <div class="filter-group">
+            <span class="filter-label">Status</span>
+            <select class="filter-select" id="f-status" onchange="detPagina=1;renderTabela()">
+              <option value="all">Todos</option>
+              <option value="pago">Pago</option>
+              <option value="agendado">Agendado</option>
+              <option value="semdata">Sem data</option>
+              <option value="reprovado">Reprovado</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <span class="filter-label">Fase</span>
+            <select class="filter-select" id="f-fase" onchange="detPagina=1;renderTabela()"><option value="all">Todas</option></select>
+          </div>
+          <div class="filter-group">
+            <span class="filter-label">CC SAP</span>
+            <select class="filter-select" id="f-cc" onchange="detPagina=1;renderTabela()"><option value="all">Todos</option></select>
+          </div>
+          <div class="filter-group">
+            <span class="filter-label">Linha Orç.</span>
+            <select class="filter-select" id="f-linha" onchange="detPagina=1;renderTabela()"><option value="all">Todas</option></select>
+          </div>
+          <div class="filter-group">
+            <span class="filter-label">Pagamento</span>
+            <select class="filter-select" id="f-pgto" onchange="detPagina=1;renderTabela()"><option value="all">Todos</option></select>
+          </div>
+          <div class="filter-group">
+            <span class="filter-label">Nº NF</span>
+            <input type="text" class="filter-input" id="f-nf" placeholder="Número NF..." oninput="detPagina=1;renderTabela()" style="width:110px;">
+          </div>
+          <div class="filter-group">
+            <input type="text" class="filter-input" id="f-busca" placeholder="Buscar título..." oninput="detPagina=1;renderTabela()">
+          </div>
+          <button class="btn-clear" onclick="limparFiltros()">Limpar filtros</button>
+        </div>
+
+        <!-- Cards de resumo reativos -->
+        <div id="det-resumo" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:1.25rem;"></div>
+
+        <div class="card" style="padding:1rem 1.25rem;margin-bottom:0.75rem;">
+          <div class="table-wrap" style="margin:0;">
+            <table>
+              <thead><tr>
+                <th class="sortable" onclick="sortDet('id')"       id="dth-id">#</th>
+                <th class="sortable" onclick="sortDet('titulo')"   id="dth-titulo">Título</th>
+                <th class="sortable" onclick="sortDet('fase')"     id="dth-fase">Fase atual</th>
+                <th class="sortable" onclick="sortDet('cc_sap')"   id="dth-cc_sap">CC SAP</th>
+                <th class="sortable" onclick="sortDet('linha')"    id="dth-linha">Linha Orç.</th>
+                <th class="sortable" onclick="sortDet('nf')"       id="dth-nf">Nº NF</th>
+                <th class="sortable" onclick="sortDet('venc')"     id="dth-venc">Vencimento</th>
+                <th class="sortable" onclick="sortDet('pgto')"     id="dth-pgto">Forma pgto</th>
+                <th class="sortable td-right" onclick="sortDet('valor')"     id="dth-valor">Valor NF</th>
+                <th class="sortable td-right" onclick="sortDet('contrato')"  id="dth-contrato">Contrato</th>
+                <th class="sortable td-right" onclick="sortDet('status')"    id="dth-status">Status</th>
+                <th class="td-center">Card</th>
+              </tr></thead>
+              <tbody id="tabela-body"></tbody>
+              <tfoot id="tabela-foot"></tfoot>
+            </table>
+          </div>
+        </div>
+        <div id="det-paginacao" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:1.25rem;padding:0 2px;"></div>
+      </div><!-- /panel-detalhamento -->
+
+      <!-- ══ ABA APROVAÇÃO OBRA ══ -->
+      <div class="tab-panel" id="panel-aprovacao">
+        <div class="page-header">
+          <div>
+            <div class="page-title">Aprovação Obra</div>
+            <div class="page-sub">Cards aguardando aprovação — revisão diária</div>
+          </div>
+          <div class="updated" id="updated-at-aprov"></div>
+        </div>
+
+        <!-- Métricas visuais -->
+        <div class="aprov-metrics-grid" id="aprov-metrics"></div>
+
+        <!-- Ordenação -->
+        <div class="aprov-filter-bar" id="aprov-filter-bar">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="font-size:11px;color:var(--text3);">Ordenar:</span>
+            <select class="filter-select" id="aprov-ordem" onchange="renderAprovacao()" style="height:28px;font-size:11px;">
+              <option value="dias-desc">Mais antigos primeiro</option>
+              <option value="dias-asc">Mais recentes primeiro</option>
+              <option value="valor-desc">Maior valor</option>
+              <option value="valor-asc">Menor valor</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="aprov-lista" class="aprov-grid"></div>
+      </div><!-- /panel-aprovacao -->
+
+      <!-- ═══════════════════════════════════════════════════════ CRONOGRAMA -->
+      <div class="tab-panel" id="panel-cronograma">
+        <div style="display:grid;grid-template-columns:1fr 360px;height:calc(100vh - 106px);">
+
+          <!-- ── PLANTA ── -->
+          <div style="position:relative;background:var(--surface2);border-right:1px solid var(--border);display:flex;align-items:center;justify-content:center;overflow:hidden;"
+            id="crono-planta-area" ondragover="event.preventDefault()" ondrop="cronoDrop(event)">
+
+            <!-- Botão modo adicionar -->
+            <div style="position:absolute;top:14px;left:14px;right:14px;display:flex;align-items:center;gap:8px;z-index:20;">
+              <div id="crono-modo-badge" style="display:none;align-items:center;gap:6px;background:#C4714A;color:white;padding:6px 14px;border-radius:20px;font-size:12px;font-weight:500;box-shadow:0 2px 12px rgba(196,113,74,.4);">
+                <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+                Arraste para desenhar a área
+              </div>
+              <button id="crono-btn-adicionar" onclick="cronoToggleModo()" style="display:none;padding:6px 13px;background:white;border:1px solid var(--border);border-radius:6px;font-size:12px;font-weight:500;color:var(--text);cursor:pointer;">+ Adicionar área</button>
+            </div>
+
+            <!-- Onboard: sem planta -->
+            <div id="crono-onboard" onclick="document.getElementById('crono-file-input').click()"
+              style="display:flex;flex-direction:column;align-items:center;gap:14px;padding:48px;text-align:center;border:2px dashed var(--border);border-radius:14px;max-width:380px;cursor:pointer;transition:all .2s;"
+              ondragover="this.style.borderColor='#C4714A'" ondragleave="this.style.borderColor=''"
+            >
+              <div style="width:60px;height:60px;border-radius:50%;background:white;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;">
+                <svg width="26" height="26" fill="none" stroke="#C4714A" stroke-width="1.5" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+              </div>
+              <div>
+                <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:4px;">Adicione a planta baixa</div>
+                <div style="font-size:12px;color:var(--text2);line-height:1.6;">Arraste uma imagem (PNG, JPG) aqui<br>ou clique para selecionar do computador.</div>
+              </div>
+              <button style="padding:8px 18px;background:#C4714A;color:white;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;" onclick="event.stopPropagation();document.getElementById('crono-file-input').click()">Escolher imagem</button>
+            </div>
+            <input type="file" id="crono-file-input" accept="image/*" style="display:none" onchange="cronoCarregarImagem(event)">
+
+            <!-- Container da planta -->
+            <div id="crono-planta-container" style="display:none;position:relative;width:calc(100% - 28px);height:calc(100% - 28px);display:none;align-items:center;justify-content:center;">
+              <img id="crono-planta-img" src="" alt="Planta" style="max-width:100%;max-height:100%;width:auto;height:auto;display:block;border-radius:6px;box-shadow:0 4px 24px rgba(0,0,0,.1);pointer-events:none;user-select:none;object-fit:contain;">
+              <!-- Retângulo de desenho em progresso -->
+              <svg id="crono-draw-svg"></svg>
+            </div>
+
+            <!-- Hint inferior -->
+            <div id="crono-hint" style="display:none;position:absolute;bottom:14px;left:50%;transform:translateX(-50%);background:#1C1A17;color:white;font-size:11px;padding:5px 14px;border-radius:20px;white-space:nowrap;opacity:.75;pointer-events:none;">
+              Passe o mouse sobre uma área para ver o local
+            </div>
+          </div>
+
+          <!-- ── PAINEL ── -->
+          <div style="display:flex;flex-direction:column;background:white;overflow:hidden;">
+
+            <!-- Abas do painel -->
+            <div style="display:flex;border-bottom:1px solid var(--border);flex-shrink:0;">
+              <button class="crono-ptab active" onclick="cronoTrocarAba('fotos',this)">📷 Fotos</button>
+              <button class="crono-ptab" onclick="cronoTrocarAba('locais',this)">📍 Locais</button>
+              <button class="crono-ptab" onclick="cronoTrocarAba('config',this)">⚙ Config</button>
+            </div>
+
+            <!-- ABA: FOTOS -->
+            <div class="crono-pane active" id="crono-pane-fotos">
+              <div style="padding:16px 18px 12px;border-bottom:1px solid var(--border);flex-shrink:0;">
+                <div style="font-size:14px;font-weight:600;color:var(--text);" id="crono-fotos-title">Selecione um local</div>
+                <div style="font-size:11px;color:var(--text2);margin-top:2px;" id="crono-fotos-sub">Clique em um pino na planta</div>
+              </div>
+              <div id="crono-fotos-empty" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:40px;text-align:center;">
+                <svg width="36" height="36" fill="none" stroke="var(--text3)" stroke-width="1" viewBox="0 0 24 24"><path d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"/><path d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"/></svg>
+                <p style="font-size:12px;color:var(--text2);line-height:1.6;">Selecione um local na planta<br>para ver o histórico fotográfico.</p>
+              </div>
+              <div id="crono-fotos-timeline" style="display:none;overflow-y:auto;flex:1;padding:0 18px 18px;"></div>
+            </div>
+
+            <!-- ABA: LOCAIS -->
+            <div class="crono-pane" id="crono-pane-locais" style="flex-direction:column;">
+              <div id="crono-locais-list" style="flex:1;overflow-y:auto;"></div>
+              <div style="padding:12px 16px;border-top:1px solid var(--border);flex-shrink:0;">
+                <button id="crono-btn-add-lista" onclick="cronoToggleModo()" style="width:100%;padding:9px;background:#C4714A;color:white;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">+ Desenhar área na planta</button>
+              </div>
+            </div>
+
+            <!-- ABA: CONFIG -->
+            <div class="crono-pane" id="crono-pane-config" style="overflow-y:auto;flex-direction:column;">
+
+              <div style="padding:18px;border-bottom:1px solid var(--border);">
+                <div style="font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">Google Apps Script — URL</div>
+                <div style="font-size:11px;color:var(--text2);line-height:1.6;margin-bottom:8px;">Cole a URL gerada pelo seu Apps Script. Só precisa configurar uma vez.</div>
+                <div style="display:flex;gap:6px;">
+                  <input id="crono-cfg-script" type="text" value="✓ URL configurada no código" readonly style="flex:1;padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;background:var(--surface2);color:var(--text2);">
+                  <button onclick="cronoTestarScript()" style="padding:7px 12px;background:var(--surface);border:1px solid var(--border);border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;color:var(--text);">Testar</button>
+                </div>
+                <div id="crono-script-status" style="display:none;font-size:11px;margin-top:6px;align-items:center;gap:5px;"></div>
+              </div>
+
+              <div style="padding:18px;border-bottom:1px solid var(--border);">
+                <div style="font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">Trocar planta</div>
+                <div style="font-size:11px;color:var(--text2);margin-bottom:8px;">Substitui a imagem mantendo os locais cadastrados.</div>
+                <button onclick="document.getElementById('crono-file-troca').click()" style="padding:7px 14px;background:var(--surface);border:1px solid var(--border);border-radius:6px;font-size:12px;cursor:pointer;color:var(--text);">Selecionar nova imagem</button>
+                <input type="file" id="crono-file-troca" accept="image/*" style="display:none" onchange="cronoCarregarImagem(event)">
+              </div>
+
+              <div style="padding:18px;border-bottom:1px solid var(--border);">
+                <div style="font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">Exportar / Importar</div>
+                <div style="font-size:11px;color:var(--text2);margin-bottom:8px;">Salva locais e configurações para compartilhar com a equipe.</div>
+                <div style="display:flex;gap:6px;">
+                  <button onclick="cronoExportar()" style="flex:1;padding:7px;background:var(--surface);border:1px solid var(--border);border-radius:6px;font-size:11px;font-weight:500;cursor:pointer;color:var(--text);">↓ Exportar</button>
+                  <button onclick="document.getElementById('crono-file-import').click()" style="flex:1;padding:7px;background:var(--surface);border:1px solid var(--border);border-radius:6px;font-size:11px;font-weight:500;cursor:pointer;color:var(--text);">↑ Importar</button>
+                  <input type="file" id="crono-file-import" accept=".json" style="display:none" onchange="cronoImportar(event)">
+                </div>
+              </div>
+
+              <div style="padding:18px;">
+                <div style="font-size:10px;font-weight:700;color:#B91C1C;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">Zona de perigo</div>
+                <button onclick="cronoResetar()" style="padding:7px 14px;background:#FEF2F2;color:#B91C1C;border:1px solid #FECACA;border-radius:6px;font-size:12px;cursor:pointer;">Apagar tudo e começar do zero</button>
+              </div>
+
+            </div>
+          </div>
+
+        </div>
+      </div><!-- /panel-cronograma -->
+
+    </div><!-- /conteudo -->
+  </div><!-- /main -->
+</div><!-- /dashboard -->
+
+
+
+<script>
+const PIPE_ID = 305908726;
+const API = 'https://api.pipefy.com/graphql';
+
+const CAMPOS = {
+  titulo:             'o_que_voc_quer_cotar_contratar_solicitar',
+  valor_nf_inicial:   'valor_nf',
+  valor_nf_receb:     'valor_da_nf',
+  data_vencimento:    'data_de_vencimento',
+  data_agendamento:   'data_agendamento',
+  tipo_pagamento:     'tipo_de_pagamento',
+  cc_sap:             'centro_de_custo_partage',
+  valor_contrato:     'valor_do_contrato',
+  tem_contrato:       'fornecedor_com_contrato',
+  linha_orcamento:    'linha_de_or_amento_obra',
+  data_emissao_nf:    'data_da_emiss_o_do_documento',
+};
+
+// Formas de pagamento que consideram PAGO automaticamente
+const PGTO_AUTO_PAGO = ['cartão de credito','cartão de crédito','dinheiro'];
+
+const TAGS_PAGAMENTO = ['boleto','cartão de credito','cartão de crédito','dinheiro','pix','transferencia','transferência'];
+const FASES_PAGAS  = ['9.1. Pagamento','10. Concluído'];
+const FASES_REPROV = ['Reprovados'];
+const CORES = ['#378ADD','#1D9E75','#EF9F27','#E24B4A','#7F77DD','#D4537E','#5B8A3C','#C67B2A','#20B2AA','#FF8C00'];
+
+let TOKEN='', _cards=[], _pipeName='', charts={};
+
+// ── Setup ──
+function iniciar() {
+  const t = document.getElementById('token-input').value.trim();
+  if (!t) return;
+  TOKEN = t;
+  localStorage.setItem('pipefy_token', t);
+  document.getElementById('setup-screen').style.display = 'none';
+  document.getElementById('dashboard').style.display = 'block';
+  carregarDados();
+}
+
+function sair() {
+  localStorage.removeItem('pipefy_token');
+  localStorage.removeItem('pipefy_cache');
+  location.reload();
+}
+
+window.addEventListener('load', () => {
+  const t = localStorage.getItem('pipefy_token');
+  if (t) {
+    TOKEN = t;
+    document.getElementById('setup-screen').style.display = 'none';
+    document.getElementById('dashboard').style.display = 'block';
+    const cache = localStorage.getItem('pipefy_cache');
+    if (cache) {
+      const { cards, pipeName, timestamp } = JSON.parse(cache);
+      _pipeName = pipeName;
+      _cards = cards;
+      document.getElementById('updated-at').textContent = 'Dados de ' + new Date(timestamp).toLocaleString('pt-BR');
+      processar();
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('conteudo').style.display = 'block';
+    } else {
+      carregarDados();
+    }
+  }
+});
+
+// ── API ──
+async function gql(q) {
+  const r = await fetch(API, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + TOKEN },
+    body: JSON.stringify({ query: q })
+  });
+  const j = await r.json();
+  if (j.errors) throw new Error(j.errors[0].message);
+  return j.data;
+}
+
+async function carregarDados() {
+  document.getElementById('loading').style.display = 'flex';
+  document.getElementById('conteudo').style.display = 'none';
+  _cards = [];
+  try {
+    const pipeInfo = await gql(`{ pipe(id: ${PIPE_ID}) { name } }`);
+    _pipeName = pipeInfo.pipe.name;
+    let cursor = null, hasNext = true, pagina = 1;
+    while (hasNext) {
+      document.getElementById('loading-text').textContent = `Buscando cards... (página ${pagina})`;
+      const after = cursor ? `, after: "${cursor}"` : '';
+      const data = await gql(`{
+        allCards(pipeId: ${PIPE_ID}, first: 50${after}) {
+          pageInfo { hasNextPage endCursor }
+          edges { node {
+            id title created_at
+            current_phase { name }
+            labels { name color }
+            fields { field { id } value }
+            attachments { url }
+          }}
+        }
+      }`);
+      const page = data.allCards;
+      _cards.push(...page.edges.map(e => e.node));
+      hasNext = page.pageInfo.hasNextPage;
+      cursor = page.pageInfo.endCursor;
+      pagina++;
+    }
+    localStorage.setItem('pipefy_cache', JSON.stringify({
+      cards: _cards, pipeName: _pipeName, timestamp: Date.now()
+    }));
+    processar();
+  } catch(e) {
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('setup-screen').style.display = 'flex';
+    document.getElementById('dashboard').style.display = 'none';
+    document.getElementById('setup-error').style.display = 'block';
+    localStorage.removeItem('pipefy_token');
+  }
+}
+
+// ── Helpers ──
+function campo(card, id) {
+  const f = card.fields.find(f => f.field.id === id);
+  return f ? f.value : null;
+}
+
+// Parser de data no formato "dd/mm/yyyy HH:mm" ou "dd/mm/yyyy" — ignora horário
+function parseDataBR(v) {
+  if (!v) return null;
+  const s = String(v).trim().split(' ')[0]; // pega só a parte da data
+  const parts = s.split('/');
+  if (parts.length !== 3) return null;
+  const [dia, mes, ano] = parts;
+  const d = new Date(Number(ano), Number(mes) - 1, Number(dia));
+  return isNaN(d.getTime()) ? null : d;
+}
+
+function parseVal(v) {
+  if (!v) return 0;
+  let s = String(v).trim();
+  if (s.includes(',')) s = s.replace(/\./g, '').replace(',', '.');
+  const n = parseFloat(s.replace(/[^\d.]/g, ''));
+  return isNaN(n) ? 0 : n;
+}
+
+function limparArray(v) {
+  if (!v) return '—';
+  try { const a = JSON.parse(v); if (Array.isArray(a)) return a.join(', '); } catch {}
+  return v;
+}
+
+function fmtData(d) {
+  if (!d) return '—';
+  return d.toLocaleDateString('pt-BR');
+}
+
+function toISO(d) {
+  if (!d) return null;
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function fmtMoeda(v) {
+  return 'R$ ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function fmtCurto(v) {
+  if (v >= 1000000) return 'R$ ' + (v / 1000000).toFixed(1) + 'M';
+  if (v >= 1000)    return 'R$ ' + (v / 1000).toFixed(0) + 'k';
+  return fmtMoeda(v);
+}
+
+function proximaQuinta() {
+  const d = new Date(); d.setHours(0, 0, 0, 0);
+  const diff = (4 - d.getDay() + 7) % 7 || 7;
+  d.setDate(d.getDate() + diff);
+  return d;
+}
+
+function getFormaPgto(labels, tipoPagamento) {
+  // Primeiro tenta pelo campo estruturado tipo_de_pagamento
+  if (tipoPagamento) return tipoPagamento;
+  // Fallback para labels
+  if (!labels || !labels.length) return null;
+  const m = labels.find(l => TAGS_PAGAMENTO.includes(l.name.toLowerCase()));
+  return m ? m.name : null;
+}
+
+function getStatus(fase, dataVenc, formaPgto) {
+  if (FASES_PAGAS.includes(fase)) return 'pago';
+  if (FASES_REPROV.includes(fase)) return 'reprovado';
+
+  // Cartão de crédito ou Dinheiro = pago automaticamente
+  if (formaPgto && PGTO_AUTO_PAGO.includes(formaPgto.toLowerCase())) return 'pago';
+
+  if (!dataVenc) return 'semdata';
+  const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+  if (dataVenc <= hoje) return 'pago';
+  return 'agendado';
+}
+
+// ── Processar ──
+function processar() {
+  const cards = _cards.map(c => {
+    const fase = c.current_phase?.name || '';
+    const labels = c.labels || [];
+    const tipoPagamento = campo(c, CAMPOS.tipo_pagamento);
+    const formaPgto = getFormaPgto(labels, tipoPagamento);
+
+    const dataVenc = parseDataBR(campo(c, CAMPOS.data_vencimento))
+                  || parseDataBR(campo(c, CAMPOS.data_agendamento));
+
+    const dataEmissaoNF = parseDataBR(campo(c, CAMPOS.data_emissao_nf));
+
+    const numeroNF    = campo(c, 'n_mero_da_nf');
+    const valorNFReceb = parseVal(campo(c, CAMPOS.valor_nf_receb));
+    const valorNFInicial = parseVal(campo(c, CAMPOS.valor_nf_inicial));
+    const valorNF = valorNFReceb || valorNFInicial;
+
+    // Valor comprometido — 3 casos:
+    // "Sim" → usa valor_do_contrato
+    // "Não" → usa valor_nf
+    // "Sim, mas o valor do contrato já foi preenchido anteriormente" → R$ 0 (evita duplicação)
+    const temContrato   = campo(c, CAMPOS.tem_contrato) || '';
+    const valorContrato = parseVal(campo(c, CAMPOS.valor_contrato));
+    let valorComprometido = 0;
+    if (temContrato === 'Sim') {
+      valorComprometido = valorContrato;
+    } else if (temContrato === 'Não') {
+      valorComprometido = valorNF;
+    } else if (temContrato.startsWith('Sim, mas')) {
+      valorComprometido = 0; // já contabilizado no card pai
+    } else {
+      valorComprometido = valorNF; // fallback para cards sem o campo
+    }
+
+    const linhaOrcamento = limparArray(campo(c, CAMPOS.linha_orcamento));
+
+    return {
+      id: c.id,
+      titulo: c.title || campo(c, CAMPOS.titulo) || '(sem título)',
+      cc_sap: limparArray(campo(c, CAMPOS.cc_sap)),
+      linha_orcamento: linhaOrcamento,
+      numero_nf_campo: limparArray(campo(c, 'n_mero_da_nf_1')) || limparArray(campo(c, 'n_mero_da_nf')),
+      valor_nf: valorNF,
+      valor_contrato: valorContrato,
+      tem_contrato: temContrato,
+      valor_comprometido: valorComprometido,
+      data_vencimento: dataVenc,
+      data_emissao_nf: dataEmissaoNF,
+      data_criacao: c.created_at ? new Date(c.created_at) : null,
+      fase,
+      status: getStatus(fase, dataVenc, formaPgto),
+      forma_pgto: formaPgto,
+      link: `https://app.pipefy.com/open-cards/${c.id}`,
+    };
+  });
+  renderDash(cards);
+  processarAprovacao(_cards);
+}
+
+// ── Render principal ──
+const ORCAMENTO_TOTAL = 8000000;
+
+const LINHAS_ORCAMENTO = {
+  'VIDROS':                           380952,
+  'ABERTURA MANÉ':                    380952,
+  'CLIMATIZAÇÃO':                     380952,
+  'MÁQUINAS E EQUIPAMENTOS':          380952,
+  'PAREDE / PAINEIS':                 380952,
+  'ESTRUTURA':                        380952,
+  'SOLEIRAS':                         380952,
+  'BANCADAS':                         380952,
+  'PAVIMENTAÇÃO':                     380952,
+  'REVESTIMENTO EM TETO':             380952,
+  'REVESTIMENTO INTERNO':             380952,
+  'LOUÇAS':                           380952,
+  'IMPERMEABILIZAÇÃO':                380952,
+  'INSTALAÇÕES':                      380952,
+  'PINTURA INTERNA':                  380952,
+  'COBERTURA':                        380952,
+  'TERRAPLANAGEM E LOCAÇÃO':          380952,
+  'SERVIÇOS PRELIMINARES':            380952,
+  'DESPESAS GERAIS':                  380952,
+  'SERVIÇOS TÉCNICOS E DEMOLIÇÕES':   380952,
+  'PROJETOS E ESTUDOS':               380952,
+};
+
+function renderDash(cards) {
+  document.getElementById('topbar-pipe').textContent = _pipeName;
+  document.getElementById('page-sub').textContent    = _pipeName;
+  if (!document.getElementById('updated-at').textContent.startsWith('Dados de')) {
+    document.getElementById('updated-at').textContent = 'Atualizado às ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  }
+
+  const ativos    = cards.filter(c => !FASES_REPROV.includes(c.fase));
+  const pagos     = cards.filter(c => c.status === 'pago');
+  const agendados = cards.filter(c => c.status === 'agendado');
+
+  const totalComprometido = ativos.filter(c => c.valor_comprometido > 0).reduce((s, c) => s + c.valor_comprometido, 0);
+  const totalPago         = pagos.reduce((s, c) => s + c.valor_nf, 0);
+  const totalAgendado     = agendados.reduce((s, c) => s + c.valor_nf, 0);
+  const totalDisponivel   = ORCAMENTO_TOTAL - totalComprometido;
+  const saldoContratos    = totalComprometido - totalPago;
+  const pctComprometido   = Math.min(100, (totalComprometido / ORCAMENTO_TOTAL * 100)).toFixed(1);
+  const pctDisponivel     = Math.max(0, (totalDisponivel / ORCAMENTO_TOTAL * 100)).toFixed(1);
+  const cardsComContrato = ativos.filter(c => c.tem_contrato === 'Sim' && c.valor_contrato > 0).length;
+
+  document.getElementById('metrics-globais').innerHTML = `
+    <div class="metric" style="border-left:3px solid #555;">
+      <div class="metric-label">Orçamento da obra</div>
+      <div class="metric-value">${fmtMoeda(ORCAMENTO_TOTAL)}</div>
+      <div class="metric-sub">Total disponibilizado</div>
+    </div>
+    <div class="metric" style="border-left:3px solid #7F77DD;">
+      <div class="metric-label">Contratado</div>
+      <div class="metric-value" style="color:#5B4FCF;">${fmtMoeda(totalComprometido)}</div>
+      <div class="metric-sub">${pctComprometido}% do orçamento · ${cardsComContrato} c/ contrato</div>
+    </div>
+    <div class="metric" style="border-left:3px solid ${totalDisponivel < 0 ? '#A32D2D' : '#1D9E75'};">
+      <div class="metric-label">Disponível no orçamento</div>
+      <div class="metric-value ${totalDisponivel < 0 ? 'red' : 'green'}">${fmtMoeda(Math.abs(totalDisponivel))}</div>
+      <div class="metric-sub">${totalDisponivel < 0 ? '⚠️ Acima do orçamento' : pctDisponivel + '% restante'}</div>
+    </div>
+    <div class="metric" style="border-left:3px solid #3B6D11;">
+      <div class="metric-label">Pago</div>
+      <div class="metric-value green">${fmtMoeda(totalPago)}</div>
+      <div class="metric-sub">${pagos.length} NFs confirmadas</div>
+    </div>
+  `;
+
+  // Saldo menor abaixo dos 4 cards
+  document.getElementById('saldo-info').innerHTML = `
+    <span style="font-size:12px;color:var(--text2);font-weight:500;">Saldo a pagar nos contratos:</span>
+    <span style="font-size:15px;font-weight:700;color:#BA7517;margin-left:10px;">${fmtMoeda(saldoContratos)}</span>
+    <span style="font-size:11px;color:var(--text3);margin-left:10px;">Contratado (${fmtMoeda(totalComprometido)}) − Pago (${fmtMoeda(totalPago)})</span>
+  `;
+
+  // Barra de progresso
+  const barEl = document.getElementById('orcamento-bar');
+  if (barEl) {
+    const pctPago  = Math.min(100, totalPago / ORCAMENTO_TOTAL * 100);
+    const pctSaldo = Math.min(100 - pctPago, saldoContratos > 0 ? saldoContratos / ORCAMENTO_TOTAL * 100 : 0);
+    barEl.innerHTML = `
+      <div style="display:flex;align-items:center;margin-bottom:6px;">
+        <span style="font-size:12px;color:var(--text2);font-weight:500;">Uso do orçamento</span>
+        <span style="font-size:12px;color:var(--text3);margin-left:auto;">${fmtCurto(totalComprometido)} comprometido de ${fmtCurto(ORCAMENTO_TOTAL)}</span>
+      </div>
+      <div style="height:12px;border-radius:6px;background:var(--border);overflow:hidden;display:flex;">
+        <div style="width:${pctPago}%;background:#3B6D11;transition:width .4s;" title="Pago: ${fmtMoeda(totalPago)}"></div>
+        <div style="width:${pctSaldo}%;background:#EF9F27;transition:width .4s;" title="Saldo contrato: ${fmtMoeda(saldoContratos)}"></div>
+      </div>
+      <div style="display:flex;gap:16px;margin-top:6px;">
+        <span style="font-size:11px;color:#3B6D11;">● Pago ${fmtCurto(totalPago)}</span>
+        <span style="font-size:11px;color:#EF9F27;">● Saldo contrato ${fmtCurto(saldoContratos)}</span>
+        <span style="font-size:11px;color:var(--text3);">● Disponível ${fmtCurto(Math.max(0, totalDisponivel))}</span>
+      </div>
+    `;
+  }
+
+  // Barra cronológica
+  const INICIO_OBRA  = new Date('2026-05-01');
+  const FIM_OBRA     = new Date('2026-08-01');
+  const hoje         = new Date();
+  const totalDias    = Math.ceil((FIM_OBRA - INICIO_OBRA) / 86400000);
+  const diasDecorridos = Math.max(0, Math.ceil((hoje - INICIO_OBRA) / 86400000));
+  const diasRestantes  = Math.max(0, Math.ceil((FIM_OBRA - hoje) / 86400000));
+  const pctTempo     = Math.min(100, (diasDecorridos / totalDias * 100));
+  const fimFormatado = FIM_OBRA.toLocaleDateString('pt-BR', { day:'2-digit', month:'long', year:'numeric' });
+  const cronoColor   = pctTempo > 90 ? '#A32D2D' : pctTempo > 70 ? '#BA7517' : '#185FA5';
+  const cronoEl = document.getElementById('cronograma-bar');
+  if (cronoEl) {
+    cronoEl.innerHTML = `
+      <div style="display:flex;align-items:center;margin-bottom:6px;">
+        <span style="font-size:12px;color:var(--text2);font-weight:500;">⏱ Cronograma da obra</span>
+        <span style="font-size:12px;color:var(--text3);margin-left:auto;">Prazo: ${fimFormatado}</span>
+      </div>
+      <div style="position:relative;height:12px;border-radius:6px;background:var(--border);overflow:hidden;">
+        <div style="width:${pctTempo}%;height:100%;background:${cronoColor};transition:width .4s;border-radius:6px;"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-top:6px;align-items:center;">
+        <span style="font-size:11px;color:var(--text3);">Início: 01/05/2026</span>
+        <div style="display:flex;gap:16px;">
+          <span style="font-size:11px;color:${cronoColor};font-weight:600;">${pctTempo.toFixed(1)}% do prazo decorrido</span>
+          <span style="font-size:11px;color:var(--text3);">● ${diasDecorridos} dias corridos</span>
+          <span style="font-size:11px;color:${diasRestantes < 30 ? '#A32D2D' : 'var(--text3)'};">● ${diasRestantes} dias restantes</span>
+        </div>
+        <span style="font-size:11px;color:var(--text3);">Fim: 01/08/2026</span>
+      </div>
+    `;
+  }
+
+  document.getElementById('alert-atrasadas').style.display = 'none';
+
+  // Popular filtros
+  const fasesUnicas = [...new Set(cards.map(c => c.fase).filter(Boolean))].sort();
+  document.getElementById('f-fase').innerHTML = '<option value="all">Todas</option>' + fasesUnicas.map(f => `<option value="${f}">${f}</option>`).join('');
+
+  const pgtoUnicos = [...new Set(cards.map(c => c.forma_pgto).filter(Boolean))].sort();
+  document.getElementById('f-pgto').innerHTML = '<option value="all">Todos</option>' + pgtoUnicos.map(p => `<option value="${p}">${p}</option>`).join('');
+
+  const linhaUnicas = [...new Set(cards.map(c => c.linha_orcamento).filter(Boolean))].sort();
+  document.getElementById('f-linha').innerHTML = '<option value="all">Todas</option>' + linhaUnicas.map(l => `<option value="${l}">${l}</option>`).join('');
+
+  const ccUnicos = [...new Set(cards.map(c => c.cc_sap).filter(v => v && v !== '—'))].sort();
+  document.getElementById('f-cc').innerHTML = '<option value="all">Todos</option>' + ccUnicos.map(v => `<option value="${v}">${v}</option>`).join('');
+
+  window._cardsP = cards;
+  renderTabela();
+  renderLinhasOrcamento(cards);
+  iniciarFiltrosFG(cards);
+  renderChartFechadoGasto();
+
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('conteudo').style.display = 'block';
+}
+
+// ── Tabela Linhas de Orçamento ──
+let _linhasSortCol = 'cont';
+let _linhasSortAsc = false;
+
+function sortLinhas(col) {
+  if (_linhasSortCol === col) {
+    _linhasSortAsc = !_linhasSortAsc;
+  } else {
+    _linhasSortCol = col;
+    _linhasSortAsc = col === 'nome'; // alfabético começa asc, valores começa desc
+  }
+  renderLinhasOrcamento(window._cardsP || []);
+}
+function renderLinhasOrcamento(cards) {
+  const ativos = (cards || []).filter(c => !FASES_REPROV.includes(c.fase));
+  const busca  = (document.getElementById('busca-linha')?.value || '').toLowerCase();
+  const filtro = document.getElementById('filtro-linha-status')?.value || 'all';
+
+  // Agrupa contratado por linha de orçamento (nome exato)
+  const contratadoMap = {};
+  ativos.filter(c => c.valor_comprometido > 0 && c.linha_orcamento).forEach(c => {
+    const k = c.linha_orcamento.trim();
+    contratadoMap[k] = (contratadoMap[k] || 0) + c.valor_comprometido;
+  });
+
+  // Todas as linhas: definidas + eventuais novas que apareçam nos cards
+  const todasLinhas = new Set([
+    ...Object.keys(LINHAS_ORCAMENTO),
+    ...ativos.filter(c => c.linha_orcamento).map(c => c.linha_orcamento.trim())
+  ]);
+
+  const totalOrcamento = Object.values(LINHAS_ORCAMENTO).reduce((s,v) => s+v, 0);
+  let totalOrc = 0, totalCont = 0, totalDisp = 0;
+
+  let linhas = [...todasLinhas].map(nome => {
+    const orc  = LINHAS_ORCAMENTO[nome] || 0;
+    const cont = contratadoMap[nome] || 0;
+    const disp = orc - cont;
+    const real = orc > 0 ? (cont / orc * 100) : null;
+    const pct  = totalOrcamento > 0 ? (orc / totalOrcamento * 100) : 0;
+    return { nome, orc, cont, disp, real, pct };
+  });
+
+  // Filtros
+  if (busca) linhas = linhas.filter(l => l.nome.toLowerCase().includes(busca));
+  if (filtro === 'com')     linhas = linhas.filter(l => l.cont > 0);
+  if (filtro === 'sem')     linhas = linhas.filter(l => l.cont === 0);
+  if (filtro === 'critico') linhas = linhas.filter(l => l.orc > 0 && l.cont > l.orc);
+
+  // Ordena
+  linhas.sort((a, b) => {
+    let va = a[_linhasSortCol], vb = b[_linhasSortCol];
+    if (_linhasSortCol === 'nome') { va = a.nome; vb = b.nome; }
+    if (va === null) va = -1; if (vb === null) vb = -1;
+    const res = typeof va === 'string' ? va.localeCompare(vb) : va - vb;
+    return _linhasSortAsc ? res : -res;
+  });
+
+  // Atualiza ícones
+  ['nome','orc','cont','disp','real','pct'].forEach(col => {
+    const el = document.getElementById('sort-icon-' + col);
+    if (el) el.textContent = col === _linhasSortCol ? (_linhasSortAsc ? '↑' : '↓') : '↕';
+  });
+
+  linhas.forEach(l => { totalOrc += l.orc; totalCont += l.cont; totalDisp += l.disp; });
+
+  const totalReal = totalOrc > 0 ? (totalCont / totalOrc * 100).toFixed(1) : '—';
+  const totalPct  = totalOrcamento > 0 ? '100,00%' : '—';
+
+  document.getElementById('linhas-body').innerHTML = linhas.map(l => {
+    const dispColor  = l.orc > 0 && l.disp < 0 ? '#A32D2D' : l.disp === 0 ? 'var(--text3)' : 'var(--text)';
+    const realColor  = l.real === null ? 'var(--text3)' : l.real > 100 ? '#A32D2D' : l.real > 80 ? '#BA7517' : '#3B6D11';
+    const realTxt    = l.real === null ? '—' : l.real.toFixed(2).replace('.', ',') + '%';
+    const pctTxt     = l.pct > 0 ? l.pct.toFixed(2).replace('.', ',') + '%' : '—';
+    const dispTxt    = l.orc === 0 ? '—' : fmtMoeda(l.disp);
+    const orcTxt     = l.orc > 0 ? fmtMoeda(l.orc) : '—';
+    const barW       = l.real !== null ? Math.min(100, l.real) : 0;
+    const barColor   = l.real > 100 ? '#A32D2D' : l.real > 80 ? '#EF9F27' : '#3B6D11';
+    const semOrc     = l.orc === 0 && l.cont > 0;
+
+    return `<tr${semOrc ? ' style="background:rgba(239,159,39,0.05);"' : ''}>
+      <td style="font-weight:500;font-size:12px;">
+        ${l.nome}
+        ${semOrc ? '<span style="font-size:9px;font-weight:700;background:#EF9F27;color:#fff;padding:1px 5px;border-radius:3px;margin-left:4px;">sem orç.</span>' : ''}
+      </td>
+      <td class="td-right" style="font-size:12px;color:var(--text2);">${orcTxt}</td>
+      <td class="td-right" style="font-size:12px;font-weight:${l.cont>0?'600':'400'};color:${l.cont>0?'#5B4FCF':'var(--text3)'};">${l.cont > 0 ? fmtMoeda(l.cont) : '—'}</td>
+      <td class="td-right" style="font-size:12px;font-weight:${l.disp<0?'600':'400'};color:${dispColor};">${dispTxt}</td>
+      <td class="td-right" style="font-size:12px;color:${realColor};">
+        ${realTxt}
+        ${l.real !== null ? `<div style="margin-top:3px;height:3px;border-radius:2px;background:var(--border);overflow:hidden;"><div style="width:${barW}%;height:100%;background:${barColor};"></div></div>` : ''}
+      </td>
+      <td class="td-right" style="font-size:12px;color:var(--text2);">${pctTxt}</td>
+    </tr>`;
+  }).join('');
+
+  const totalDispColor = totalDisp < 0 ? '#A32D2D' : 'var(--text)';
+  document.getElementById('linhas-foot').innerHTML = `
+    <tr style="font-weight:700;background:var(--surface2);border-top:2px solid var(--border);">
+      <td>TOTAL (${linhas.length} linhas)</td>
+      <td class="td-right">${totalOrc > 0 ? fmtMoeda(totalOrc) : '—'}</td>
+      <td class="td-right" style="color:#5B4FCF;">${fmtMoeda(totalCont)}</td>
+      <td class="td-right" style="color:${totalDispColor};">${totalOrc > 0 ? fmtMoeda(totalDisp) : '—'}</td>
+      <td class="td-right">${totalReal !== '—' ? totalReal + '%' : '—'}</td>
+      <td class="td-right">${totalPct}</td>
+    </tr>`;
+}
+
+// ── Tabela Detalhamento ──
+const DET_POR_PAG = 25;
+let detPagina = 1;
+
+function renderTabela() {
+  const cards = window._cardsP || [];
+  const fDe   = document.getElementById('f-de').value;
+  const fAte  = document.getElementById('f-ate').value;
+  const fS    = document.getElementById('f-status').value;
+  const fF    = document.getElementById('f-fase').value;
+  const fCC   = document.getElementById('f-cc')?.value || 'all';
+  const fP    = document.getElementById('f-pgto').value;
+  const fL    = document.getElementById('f-linha')?.value || 'all';
+  const fNF   = (document.getElementById('f-nf')?.value || '').toLowerCase();
+  const fB    = document.getElementById('f-busca').value.toLowerCase();
+
+  const filtered = cards.filter(c => {
+    if (fS  !== 'all' && c.status !== fS) return false;
+    if (fF  !== 'all' && c.fase !== fF) return false;
+    if (fCC !== 'all' && c.cc_sap !== fCC) return false;
+    if (fP  !== 'all' && c.forma_pgto !== fP) return false;
+    if (fL  !== 'all' && c.linha_orcamento !== fL) return false;
+    if (fNF && !(c.numero_nf_campo || '').toLowerCase().includes(fNF)) return false;
+    if (fB  && !c.titulo.toLowerCase().includes(fB)) return false;
+    if (fDe && c.data_vencimento && toISO(c.data_vencimento) < fDe) return false;
+    if (fAte && c.data_vencimento && toISO(c.data_vencimento) > fAte) return false;
+    if ((fDe || fAte) && !c.data_vencimento) return false;
+    return true;
+  });
+
+  const total      = filtered.reduce((s, c) => s + c.valor_nf, 0);
+  const tPago      = filtered.filter(c => c.status === 'pago').reduce((s,c) => s + c.valor_nf, 0);
+  const tAgend     = filtered.filter(c => c.status === 'agendado').reduce((s,c) => s + c.valor_nf, 0);
+  const tSemData   = filtered.filter(c => c.status === 'semdata').reduce((s,c) => s + c.valor_nf, 0);
+  const tReprov    = filtered.filter(c => c.status === 'reprovado').reduce((s,c) => s + c.valor_nf, 0);
+  const nPago      = filtered.filter(c => c.status === 'pago').length;
+  const nAgend     = filtered.filter(c => c.status === 'agendado').length;
+  const nSemData   = filtered.filter(c => c.status === 'semdata').length;
+  const nReprov    = filtered.filter(c => c.status === 'reprovado').length;
+  const totalPgs   = Math.max(1, Math.ceil(filtered.length / DET_POR_PAG));
+
+  const mkBox = (label, valor, qtd, cor, borda) => `
+    <div style="background:var(--surface);border:1px solid var(--border);border-left:3px solid ${borda};border-radius:var(--radius);padding:14px 16px;">
+      <div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">${label}</div>
+      <div style="font-size:20px;font-weight:700;color:${cor};line-height:1;">${valor}</div>
+      ${qtd !== null ? `<div style="font-size:11px;color:var(--text3);margin-top:5px;">${qtd} card(s)</div>` : ''}
+    </div>`;
+
+  const resumoEl = document.getElementById('det-resumo');
+  if (resumoEl) resumoEl.innerHTML =
+    mkBox('Valor filtrado',  fmtMoeda(total),    filtered.length, '#185FA5', '#185FA5') +
+    mkBox('Agendado',        fmtMoeda(tAgend),   nAgend,          '#BA7517', '#EF9F27') +
+    mkBox('Pago',            fmtMoeda(tPago),    nPago,           '#3B6D11', '#1D9E75') +
+    mkBox('Sem data',        fmtMoeda(tSemData), nSemData,        '#BA7517', '#d4a017') +
+    mkBox('Reprovado',       fmtMoeda(tReprov),  nReprov,         '#888',    '#bbb');
+
+  if (detPagina > totalPgs) detPagina = totalPgs;
+
+  applySortHeaders('dth-', _dSort, ['id','titulo','fase','cc_sap','linha','nf','venc','pgto','valor','contrato','status']);
+  const sorted = doSort(filtered, _dSort);
+  const pagina = sorted.slice((detPagina - 1) * DET_POR_PAG, detPagina * DET_POR_PAG);
+
+  const sInfo = {
+    'pago':      { l: 'Pago',      c: 'badge-green' },
+    'agendado':  { l: 'Agendado',  c: 'badge-blue'  },
+    'semdata':   { l: 'Sem data',  c: 'badge-amber' },
+    'reprovado': { l: 'Reprovado', c: 'badge-gray'  },
+  };
+
+  const tbody = document.getElementById('tabela-body');
+  const tfoot = document.getElementById('tabela-foot');
+
+  if (!filtered.length) {
+    tbody.innerHTML = `<tr><td colspan="12" style="text-align:center;padding:3rem;color:var(--text3);">Nenhum card encontrado.</td></tr>`;
+    tfoot.innerHTML = '';
+    renderPaginacao(0, 0);
+    return;
+  }
+
+  const offset = (detPagina - 1) * DET_POR_PAG;
+  tbody.innerHTML = pagina.map((c, i) => {
+    const si = sInfo[c.status] || { l: c.status, c: 'badge-gray' };
+    const pgtoHtml = c.forma_pgto
+      ? `<span class="badge badge-gray" style="font-size:10px;">${c.forma_pgto}</span>`
+      : '<span style="color:var(--text3);font-size:11px;">—</span>';
+    const contratoHtml = c.tem_contrato === 'Sim' && c.valor_contrato > 0
+      ? `<span style="font-weight:600;color:#5B4FCF;">${fmtMoeda(c.valor_contrato)}</span>`
+      : c.tem_contrato?.startsWith('Sim, mas')
+      ? `<span style="font-size:10px;color:var(--text3);">já contab.</span>`
+      : '<span style="color:var(--text3);font-size:11px;">—</span>';
+    return `<tr>
+      <td style="color:var(--text3);font-size:11px;">${offset + i + 1}</td>
+      <td style="min-width:180px;"><div class="td-title" style="max-width:220px;">${c.titulo}</div><div class="td-sub">#${c.id}</div></td>
+      <td><span class="badge badge-gray" style="font-size:10px;white-space:nowrap;">${c.fase}</span></td>
+      <td style="font-size:12px;color:var(--text2);white-space:nowrap;">${c.cc_sap}</td>
+      <td style="font-size:11px;color:var(--text2);max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${c.linha_orcamento||''}">${c.linha_orcamento || '—'}</td>
+      <td style="font-size:11px;color:var(--text2);white-space:nowrap;">${c.numero_nf_campo || '—'}</td>
+      <td style="font-size:12px;white-space:nowrap;">${fmtData(c.data_vencimento)}</td>
+      <td>${pgtoHtml}</td>
+      <td class="td-right" style="font-weight:500;white-space:nowrap;">${c.valor_nf > 0 ? fmtMoeda(c.valor_nf) : '—'}</td>
+      <td class="td-right" style="white-space:nowrap;">${contratoHtml}</td>
+      <td class="td-right"><span class="badge ${si.c}">${si.l}</span></td>
+      <td class="td-center"><a class="link-card" href="${c.link}" target="_blank">Abrir ↗</a></td>
+    </tr>`;
+  }).join('');
+
+  const totalContrato = filtered.filter(c => c.tem_contrato === 'Sim').reduce((s,c) => s + c.valor_contrato, 0);
+  tfoot.innerHTML = `<tr>
+    <td colspan="8" style="font-size:11px;color:var(--text3);">
+      ${filtered.length} card(s) encontrado(s) · página ${detPagina} de ${totalPgs}
+    </td>
+    <td class="td-right" style="font-weight:700;white-space:nowrap;">${fmtMoeda(total)}</td>
+    <td class="td-right" style="color:#5B4FCF;white-space:nowrap;">${fmtMoeda(totalContrato)}</td>
+    <td colspan="2"></td>
+  </tr>`;
+
+  renderPaginacao(filtered.length, totalPgs);
+}
+
+function renderPaginacao(total, totalPgs) {
+  const el = document.getElementById('det-paginacao');
+  if (!el) return;
+  if (totalPgs <= 1) { el.innerHTML = ''; return; }
+
+  // Gera range de páginas visíveis: sempre mostra 1, última, e janela de 3 ao redor da atual
+  const vis = new Set([1, totalPgs, detPagina]);
+  for (let p = Math.max(1, detPagina - 1); p <= Math.min(totalPgs, detPagina + 1); p++) vis.add(p);
+  const pages = [...vis].sort((a,b) => a - b);
+
+  let btns = '';
+  let prev = 0;
+  pages.forEach(p => {
+    if (p - prev > 1) btns += `<span style="padding:0 4px;color:var(--text3);">…</span>`;
+    const active = p === detPagina;
+    btns += `<button onclick="detPagina=${p};renderTabela()" style="
+      min-width:32px;height:32px;padding:0 8px;border:1px solid ${active ? '#1D9E75' : 'var(--border2)'};
+      border-radius:var(--radius-sm);background:${active ? '#1D9E75' : 'var(--surface)'};
+      color:${active ? '#fff' : 'var(--text2)'};font-size:12px;font-weight:${active ? '700' : '400'};
+      cursor:pointer;transition:all .15s;"
+      onmouseover="if(${!active})this.style.background='var(--surface2)'"
+      onmouseout="if(${!active})this.style.background='var(--surface)'"
+    >${p}</button>`;
+    prev = p;
+  });
+
+  const inicio = (detPagina - 1) * DET_POR_PAG + 1;
+  const fim    = Math.min(detPagina * DET_POR_PAG, total);
+
+  el.innerHTML = `
+    <span style="font-size:12px;color:var(--text3);">Exibindo ${inicio}–${fim} de ${total} cards</span>
+    <div style="display:flex;align-items:center;gap:4px;">
+      <button onclick="if(detPagina>1){detPagina--;renderTabela();}" ${detPagina===1?'disabled':''} style="
+        height:32px;padding:0 10px;border:1px solid var(--border2);border-radius:var(--radius-sm);
+        background:var(--surface);color:var(--text2);font-size:12px;cursor:pointer;
+        opacity:${detPagina===1?'0.4':'1'};">‹ Anterior</button>
+      ${btns}
+      <button onclick="if(detPagina<${totalPgs}){detPagina++;renderTabela();}" ${detPagina===totalPgs?'disabled':''} style="
+        height:32px;padding:0 10px;border:1px solid var(--border2);border-radius:var(--radius-sm);
+        background:var(--surface);color:var(--text2);font-size:12px;cursor:pointer;
+        opacity:${detPagina===totalPgs?'0.4':'1'};">Próxima ›</button>
+    </div>`;
+}
+
+function limparFiltros() {
+  ['f-de','f-ate','f-nf','f-busca'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+  ['f-status','f-fase','f-cc','f-pgto','f-linha'].forEach(id => { const el = document.getElementById(id); if(el) el.value = 'all'; });
+  detPagina = 1;
+  renderTabela();
+}
+
+// ── Gráfico Fechado vs Gasto ──
+function iniciarFiltrosFG(cards) {
+  const hoje = new Date();
+  const anos = new Set([hoje.getFullYear()]);
+  cards.forEach(c => {
+    if (c.data_emissao_nf) anos.add(c.data_emissao_nf.getFullYear());
+    if (c.data_vencimento) anos.add(c.data_vencimento.getFullYear());
+  });
+  const anosOrd = [...anos].sort();
+
+  ['fg-ano-de','fg-ano-ate'].forEach(id => {
+    const sel = document.getElementById(id);
+    if (!sel) return;
+    const prev = sel.value;
+    sel.innerHTML = anosOrd.map(a => `<option value="${a}">${a}</option>`).join('');
+    sel.value = prev && anosOrd.includes(Number(prev)) ? prev : String(hoje.getFullYear());
+  });
+
+  if (!document.getElementById('fg-mes-de')._iniciado) {
+    const meDe6 = new Date(hoje.getFullYear(), hoje.getMonth() - 5, 1);
+    document.getElementById('fg-mes-de').value  = String(meDe6.getMonth() + 1).padStart(2,'0');
+    document.getElementById('fg-ano-de').value  = String(meDe6.getFullYear());
+    document.getElementById('fg-mes-ate').value = String(hoje.getMonth() + 1).padStart(2,'0');
+    document.getElementById('fg-ano-ate').value = String(hoje.getFullYear());
+    document.getElementById('fg-mes-de')._iniciado = true;
+  }
+}
+
+function renderChartFechadoGasto() {
+  const cards = window._cardsP || [];
+  const mesDe  = Number(document.getElementById('fg-mes-de')?.value  || 1);
+  const anoDe  = Number(document.getElementById('fg-ano-de')?.value  || new Date().getFullYear());
+  const mesAte = Number(document.getElementById('fg-mes-ate')?.value || 12);
+  const anoAte = Number(document.getElementById('fg-ano-ate')?.value || new Date().getFullYear());
+
+  const meses = [];
+  let cur = new Date(anoDe, mesDe - 1, 1);
+  const fim = new Date(anoAte, mesAte - 1, 1);
+  while (cur <= fim) {
+    meses.push({ ano: cur.getFullYear(), mes: cur.getMonth() + 1 });
+    cur = new Date(cur.getFullYear(), cur.getMonth() + 1, 1);
+  }
+
+  const mapFechado = {}, mapGasto = {};
+  meses.forEach(({ ano, mes }) => {
+    const k = `${ano}-${String(mes).padStart(2,'0')}`;
+    mapFechado[k] = 0; mapGasto[k] = 0;
+  });
+
+  cards.filter(c => c.status !== 'reprovado').forEach(c => {
+    // CINZA — fechado: agrupado pela data de emissão da NF
+    if (c.data_emissao_nf && c.valor_comprometido > 0) {
+      const k = `${c.data_emissao_nf.getFullYear()}-${String(c.data_emissao_nf.getMonth()+1).padStart(2,'0')}`;
+      if (k in mapFechado) mapFechado[k] += c.valor_comprometido;
+    }
+    // AZUL — gasto: agrupado pela data de vencimento
+    if (c.data_vencimento && c.valor_nf > 0) {
+      const k = `${c.data_vencimento.getFullYear()}-${String(c.data_vencimento.getMonth()+1).padStart(2,'0')}`;
+      if (k in mapGasto) mapGasto[k] += c.valor_nf;
+    }
+  });
+
+  const nomesMeses = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  const labels   = meses.map(({ ano, mes }) => `${nomesMeses[mes-1]}/${String(ano).slice(2)}`);
+  const vFechado = meses.map(({ ano, mes }) => mapFechado[`${ano}-${String(mes).padStart(2,'0')}`]);
+  const vGasto   = meses.map(({ ano, mes }) => mapGasto[`${ano}-${String(mes).padStart(2,'0')}`]);
+
+  const totFechado = vFechado.reduce((s,v) => s+v, 0);
+  const totGasto   = vGasto.reduce((s,v) => s+v, 0);
+  const delta      = totFechado - totGasto;
+  const pct        = totFechado > 0 ? ((delta / totFechado) * 100).toFixed(1) : 0;
+  const mesesComDados = meses.filter(({ano,mes}) => {
+    const k = `${ano}-${String(mes).padStart(2,'0')}`;
+    return mapFechado[k] > 0 || mapGasto[k] > 0;
+  }).length || 1;
+  const deltaEl = document.getElementById('fg-delta-info');
+  if (deltaEl) deltaEl.innerHTML = totFechado > 0
+    ? `Δ médio postergado: <strong style="color:#185FA5;">${fmtMoeda(delta / mesesComDados)}/mês</strong>&nbsp;·&nbsp;<strong>${pct}%</strong> do fechado jogado para frente`
+    : '';
+
+  if (charts['chartFechadoGasto']) charts['chartFechadoGasto'].destroy();
+  const canvas = document.getElementById('chartFechadoGasto');
+  if (!canvas) return;
+
+  charts['chartFechadoGasto'] = new Chart(canvas, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Fechado (emissão NF)',
+          data: vFechado,
+          backgroundColor: '#9CA3AF',
+          borderRadius: { topLeft: 4, topRight: 4 },
+          borderSkipped: false,
+          barPercentage: 0.65,
+          categoryPercentage: 0.8,
+        },
+        {
+          label: 'Gasto (vencimento)',
+          data: vGasto,
+          backgroundColor: '#1a3a5c',
+          borderRadius: { topLeft: 4, topRight: 4 },
+          borderSkipped: false,
+          barPercentage: 0.65,
+          categoryPercentage: 0.8,
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: 'rgba(255,255,255,0.97)',
+          borderColor: '#e0e0e0',
+          borderWidth: 1,
+          titleColor: '#111',
+          bodyColor: '#444',
+          titleFont: { size: 12, weight: '600' },
+          bodyFont: { size: 12 },
+          padding: 12,
+          callbacks: {
+            label: ctx => `  ${ctx.dataset.label}: ${fmtMoeda(ctx.raw)}`,
+            afterBody: items => {
+              const f = items.find(i => i.datasetIndex === 0)?.raw || 0;
+              const g = items.find(i => i.datasetIndex === 1)?.raw || 0;
+              const d = f - g;
+              return d !== 0 ? [`  Δ postergado: ${fmtMoeda(d)}`] : [];
+            }
+          }
+        }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 11 }, color: '#666' } },
+        y: {
+          grid: { color: 'rgba(0,0,0,0.05)' },
+          border: { display: false },
+          ticks: { callback: v => fmtCurto(v), font: { size: 11 }, color: '#888' }
+        }
+      }
+    }
+  });
+}
+
+// ── Chart ──
+function mkChart(id, cfg) { if (charts[id]) charts[id].destroy(); charts[id] = new Chart(document.getElementById(id), cfg); }
+
+function renderCharts(cards) {
+  const ativos = cards.filter(c => !FASES_REPROV.includes(c.fase));
+
+  // ── CC SAP (por valor comprometido) ──
+  const ccMap = {};
+  ativos.filter(c => c.valor_comprometido > 0).forEach(c => {
+    const cc = c.cc_sap || 'Sem CC';
+    ccMap[cc] = (ccMap[cc] || 0) + c.valor_comprometido;
+  });
+  const ccLabels = Object.keys(ccMap).sort((a,b) => ccMap[b]-ccMap[a]);
+  mkChart('chartCC', {
+    type: 'bar',
+    data: { labels: ccLabels, datasets: [{ data: ccLabels.map(l=>ccMap[l]), backgroundColor: CORES, borderRadius: 5 }] },
+    options: {
+      indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ' ' + fmtMoeda(ctx.raw) } } },
+      scales: {
+        x: { ticks: { callback: v => fmtCurto(v), font: { size: 10 } }, grid: { color: 'rgba(0,0,0,0.05)' } },
+        y: { ticks: { font: { size: 10 } }, grid: { display: false } }
+      }
+    }
+  });
+
+  // ── Linha de Orçamento ──
+  const linhaMap = {};
+  ativos.filter(c => c.valor_comprometido > 0 && c.linha_orcamento).forEach(c => {
+    linhaMap[c.linha_orcamento] = (linhaMap[c.linha_orcamento] || 0) + c.valor_comprometido;
+  });
+  const linhaLabels = Object.keys(linhaMap).sort((a,b) => linhaMap[b]-linhaMap[a]);
+  mkChart('chartStatus', {
+    type: 'doughnut',
+    data: { labels: linhaLabels.length ? linhaLabels : ['Sem linha'], datasets: [{ data: linhaLabels.length ? linhaLabels.map(l=>linhaMap[l]) : [1], backgroundColor: CORES, borderWidth: 2 }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'right', labels: { font: { size: 11 }, boxWidth: 12, padding: 10 } },
+        tooltip: { callbacks: { label: ctx => ' ' + fmtMoeda(ctx.raw) } }
+      }
+    }
+  });
+  // Update chart title
+  const statusTitle = document.querySelector('[data-chart="status"] .card-title');
+  if (statusTitle) statusTitle.textContent = 'Linha de Orçamento - OBRA';
+
+  // ── Gráfico por Fase ──
+  const faseMap = {};
+  ativos.filter(c => c.valor_comprometido > 0).forEach(c => {
+    faseMap[c.fase] = (faseMap[c.fase] || 0) + c.valor_comprometido;
+  });
+  const fLabels = Object.keys(faseMap).sort((a,b) => faseMap[b]-faseMap[a]).slice(0, 8);
+  mkChart('chartFase', {
+    type: 'bar',
+    data: { labels: fLabels, datasets: [{ data: fLabels.map(l => faseMap[l]), backgroundColor: CORES, borderRadius: 4 }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ' ' + fmtMoeda(ctx.raw) } } },
+      scales: {
+        y: { ticks: { callback: v => fmtCurto(v), font: { size: 10 } }, grid: { color: 'rgba(0,0,0,0.05)' } },
+        x: { ticks: { font: { size: 9 }, maxRotation: 30 }, grid: { display: false } }
+      }
+    }
+  });
+
+  // ── Forma de Pgto ──
+  const pgtoMap = {};
+  ativos.filter(c => c.valor_nf > 0 && c.forma_pgto).forEach(c => {
+    pgtoMap[c.forma_pgto] = (pgtoMap[c.forma_pgto] || 0) + c.valor_nf;
+  });
+  const pLabels = Object.keys(pgtoMap).sort((a,b) => pgtoMap[b]-pgtoMap[a]);
+  mkChart('chartPgto', {
+    type: 'pie',
+    data: { labels: pLabels, datasets: [{ data: pLabels.map(l => pgtoMap[l]), backgroundColor: CORES, borderWidth: 2 }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'right', labels: { font: { size: 11 }, boxWidth: 12, padding: 8 } },
+        tooltip: { callbacks: { label: ctx => ' ' + fmtMoeda(ctx.raw) } }
+      }
+    }
+  });
+}
+
+function popularFiltroMes(cards) {
+  const selMes = document.getElementById('f-mes-grafico');
+  const selAno = document.getElementById('f-ano-grafico');
+  if (!selMes || !selAno) return;
+
+  const hoje = new Date();
+  const anoAtual = hoje.getFullYear();
+
+  // Anos: ano atual + anos encontrados nos dados
+  const anos = new Set([anoAtual]);
+  cards.filter(c => c.data_vencimento).forEach(c => anos.add(c.data_vencimento.getFullYear()));
+  const anosOrdenados = Array.from(anos).sort();
+
+  // Popular select de ano (preserva seleção se possível)
+  const prevAno = selAno.value;
+  selAno.innerHTML = anosOrdenados.map(a => `<option value="${a}">${a}</option>`).join('');
+  if (prevAno && anosOrdenados.includes(Number(prevAno))) selAno.value = prevAno;
+  else selAno.value = String(anoAtual);
+
+  // Seleciona mês atual se ainda não há seleção
+  if (!selMes.value) selMes.value = String(hoje.getMonth() + 1).padStart(2, '0');
+}
+
+function renderChartJanelas(cards) {
+  popularFiltroMes(cards);
+  const selMes = document.getElementById('f-mes-grafico');
+  const selAno = document.getElementById('f-ano-grafico');
+  const mesSel = selMes ? Number(selMes.value) : null;
+  const anoSel = selAno ? Number(selAno.value) : null;
+
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+
+  let base = cards.filter(c => c.data_vencimento && c.status !== 'reprovado');
+  if (mesSel && anoSel) {
+    base = base.filter(c => {
+      const d = c.data_vencimento;
+      return d.getFullYear() === anoSel && (d.getMonth() + 1) === mesSel;
+    });
+  }
+
+  // Agrupar por data
+  const map = {};
+  base.forEach(c => {
+    const k = toISO(c.data_vencimento);
+    if (!map[k]) map[k] = { total: 0, past: true, cards: [] };
+    map[k].total += c.valor_nf;
+    map[k].cards.push(c);
+    if (c.data_vencimento > hoje) map[k].past = false;
+  });
+
+  const labels   = Object.keys(map).sort();
+  const valores  = labels.map(k => map[k].total);
+  const isPast   = labels.map(k => map[k].past);
+  const empties  = document.getElementById('chart-janelas-empty');
+  const canvas   = document.getElementById('chartJanelas');
+  const resumoEl = document.getElementById('janelas-resumo-mes');
+
+  // ── Resumo embaixo ──
+  if (resumoEl) {
+    const nomeMeses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+    const nomeMes   = mesSel ? nomeMeses[mesSel - 1] : '—';
+    const totalMes  = valores.reduce((s, v) => s + v, 0);
+    const totalPago = labels.reduce((s, k, i) => isPast[i] ? s + valores[i] : s, 0);
+    const totalFut  = totalMes - totalPago;
+    const qtdJanelas = labels.length;
+
+    resumoEl.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;padding:16px 20px;background:var(--surface2);border-top:1px solid var(--border);border-radius:0 0 8px 8px;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-size:13px;font-weight:600;color:var(--text2);">Resumo —</span>
+          <span style="font-size:13px;font-weight:700;color:var(--text);">${nomeMes} ${anoSel || ''}</span>
+          <span style="font-size:11px;color:var(--text3);background:var(--border);padding:2px 8px;border-radius:10px;margin-left:4px;">${qtdJanelas} janela${qtdJanelas !== 1 ? 's' : ''}</span>
+        </div>
+        <div style="display:flex;gap:24px;flex-wrap:wrap;">
+          <div style="text-align:center;">
+            <div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px;">Total do mês</div>
+            <div style="font-size:18px;font-weight:700;color:#185FA5;">${fmtMoeda(totalMes)}</div>
+          </div>
+          <div style="width:1px;background:var(--border);"></div>
+          <div style="text-align:center;">
+            <div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px;">Já pago / vencido</div>
+            <div style="font-size:18px;font-weight:700;color:#3B6D11;">${fmtMoeda(totalPago)}</div>
+          </div>
+          <div style="width:1px;background:var(--border);"></div>
+          <div style="text-align:center;">
+            <div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px;">A pagar</div>
+            <div style="font-size:18px;font-weight:700;color:${totalFut > 0 ? '#BA7517' : 'var(--text3)'};">${fmtMoeda(totalFut)}</div>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  if (!labels.length) {
+    if (empties) { empties.style.display = 'flex'; empties.style.position = 'absolute'; }
+    if (canvas) canvas.style.visibility = 'hidden';
+    if (charts['chartJanelas']) { charts['chartJanelas'].destroy(); delete charts['chartJanelas']; }
+    return;
+  }
+  if (empties) empties.style.display = 'none';
+  if (canvas) canvas.style.visibility = 'visible';
+
+  function labelJanela(isoDate, idx) {
+    const d = new Date(isoDate + 'T12:00:00');
+    const ordinals = ['1ª','2ª','3ª','4ª','5ª','6ª','7ª','8ª'];
+    const ord = ordinals[idx] || `${idx+1}ª`;
+    const dia = d.toLocaleDateString('pt-BR', { day:'2-digit', month:'long' });
+    return `${ord} Janela • ${dia}`;
+  }
+
+  if (charts['chartJanelas']) charts['chartJanelas'].destroy();
+
+  const maxVal  = Math.max(...valores);
+  const minVal  = Math.min(...valores);
+  const padding = (maxVal - minVal) * 0.4 || maxVal * 0.35 || 5000;
+
+  charts['chartJanelas'] = new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels: labels.map((k, i) => labelJanela(k, i)),
+      datasets: [{
+        data: valores,
+        borderColor: '#185FA5',
+        borderWidth: 2.5,
+        // segment: linha sólida se AMBOS os pontos são passados, pontilhada se algum é futuro
+        segment: {
+          borderDash: ctx => {
+            const i = ctx.p1DataIndex;
+            return (isPast[ctx.p0DataIndex] && isPast[i]) ? [] : [7, 5];
+          },
+          borderColor: ctx => '#185FA5',
+        },
+        pointBackgroundColor: labels.map((k, i) => isPast[i] ? '#185FA5' : '#ffffff'),
+        pointBorderColor: '#185FA5',
+        pointBorderWidth: 2,
+        pointRadius: 7,
+        pointHoverRadius: 9,
+        tension: 0.35,
+        fill: false,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      layout: { padding: { top: 44, right: 40, bottom: 10, left: 40 } },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: 'rgba(255,255,255,0.97)',
+          borderColor: 'var(--border2)',
+          borderWidth: 1,
+          titleColor: '#111',
+          bodyColor: '#185FA5',
+          titleFont: { size: 12, weight: '600' },
+          bodyFont: { size: 14, weight: '700' },
+          padding: 12,
+          callbacks: {
+            label: ctx => '  ' + fmtMoeda(ctx.raw),
+          }
+        },
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: { font: { size: 12, weight: '500' }, color: '#555', padding: 10 }
+        },
+        y: {
+          display: false,
+          min: Math.max(0, minVal - padding),
+          max: maxVal + padding,
+        }
+      }
+    },
+    plugins: [{
+      id: 'valorLabels',
+      afterDatasetsDraw(chart) {
+        const ctx2 = chart.ctx;
+        const meta = chart.getDatasetMeta(0);
+        ctx2.save();
+        meta.data.forEach((pt, i) => {
+          ctx2.font = 'bold 12.5px -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif';
+          ctx2.fillStyle = '#185FA5';
+          ctx2.textAlign = 'center';
+          ctx2.textBaseline = 'bottom';
+          ctx2.fillText(fmtMoeda(valores[i]), pt.x, pt.y - 13);
+        });
+        ctx2.restore();
+      }
+    }]
+  });
+  renderTabelaJanela();
+}
+
+// ── Sort state ──
+let _jSort = { col: 'venc', asc: true };
+let _dSort = { col: 'venc', asc: true };
+
+function applySortHeaders(prefix, state, cols) {
+  cols.forEach(c => {
+    const el = document.getElementById(prefix + c);
+    if (!el) return;
+    el.classList.remove('sort-asc', 'sort-desc');
+    if (state.col === c) el.classList.add(state.asc ? 'sort-asc' : 'sort-desc');
+  });
+}
+
+function sortVal(c, col) {
+  switch(col) {
+    case 'id':       return String(c.id);
+    case 'titulo':   return (c.titulo || '').toLowerCase();
+    case 'cc_sap':   return (c.cc_sap || '').toLowerCase();
+    case 'fase':     return (c.fase || '').toLowerCase();
+    case 'linha':    return (c.linha_orcamento || '').toLowerCase();
+    case 'nf':       return (c.numero_nf_campo || '').toLowerCase();
+    case 'venc':     return c.data_vencimento ? c.data_vencimento.getTime() : Infinity;
+    case 'pgto':     return (c.forma_pgto || '').toLowerCase();
+    case 'valor':    return c.valor_nf || 0;
+    case 'contrato': return c.valor_contrato || 0;
+    case 'status':   return c.status || '';
+    default:         return '';
+  }
+}
+
+function doSort(arr, state) {
+  return [...arr].sort((a, b) => {
+    const va = sortVal(a, state.col), vb = sortVal(b, state.col);
+    const r = typeof va === 'number' ? va - vb : String(va).localeCompare(String(vb));
+    return state.asc ? r : -r;
+  });
+}
+
+function sortJanela(col) {
+  if (_jSort.col === col) _jSort.asc = !_jSort.asc;
+  else { _jSort.col = col; _jSort.asc = true; }
+  renderTabelaJanela();
+}
+
+function sortDet(col) {
+  if (_dSort.col === col) _dSort.asc = !_dSort.asc;
+  else { _dSort.col = col; _dSort.asc = true; }
+  renderTabela();
+}
+
+// ── Tabela simplificada da aba Janelas ──
+function renderTabelaJanela() {
+  const cards = window._cardsP || [];
+  const fjDe  = document.getElementById('fj-de')?.value;
+  const fjAte = document.getElementById('fj-ate')?.value;
+  const aviso = document.getElementById('fj-aviso');
+
+  let filtrado;
+  const usandoMes = !fjDe && !fjAte;
+
+  if (usandoMes) {
+    // Sem filtro de data → usa mês/ano do gráfico
+    const selMes = document.getElementById('f-mes-grafico');
+    const selAno = document.getElementById('f-ano-grafico');
+    const mes = selMes ? Number(selMes.value) : null;
+    const ano = selAno ? Number(selAno.value) : null;
+    filtrado = cards.filter(c => {
+      if (!c.data_vencimento) return false;
+      if (c.status === 'reprovado') return false;
+      return c.data_vencimento.getMonth() + 1 === mes && c.data_vencimento.getFullYear() === ano;
+    });
+    if (aviso) aviso.style.display = 'block';
+  } else {
+    filtrado = cards.filter(c => {
+      if (!c.data_vencimento) return false;
+      if (c.status === 'reprovado') return false;
+      const iso = toISO(c.data_vencimento);
+      if (fjDe && iso < fjDe) return false;
+      if (fjAte && iso > fjAte) return false;
+      return true;
+    });
+    if (aviso) aviso.style.display = 'none';
+  }
+
+  filtrado = doSort(filtrado, _jSort);
+  applySortHeaders('jth-', _jSort, ['id','titulo','cc_sap','nf','venc','pgto','valor']);
+
+  const tbody = document.getElementById('janela-tabela-body');
+  const tfoot = document.getElementById('janela-tabela-foot');
+  if (!tbody) return;
+
+  if (!filtrado.length) {
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:2.5rem;color:var(--text3);">Nenhum card encontrado.</td></tr>`;
+    tfoot.innerHTML = '';
+    return;
+  }
+
+  const sInfo = { pago: { c:'badge-green', l:'Pago' }, agendado: { c:'badge-blue', l:'Agendado' }, semdata: { c:'badge-amber', l:'Sem data' }, reprovado: { c:'badge-gray', l:'Reprovado' } };
+
+  tbody.innerHTML = filtrado.map(c => {
+    const si = sInfo[c.status] || { c:'badge-gray', l: c.status };
+    const pgto = c.forma_pgto
+      ? `<span class="badge badge-gray" style="font-size:10px;">${c.forma_pgto}</span>`
+      : '<span style="color:var(--text3);">—</span>';
+    return `<tr>
+      <td style="font-size:12px;color:var(--text2);font-weight:500;">${c.id}</td>
+      <td><div class="td-title" style="max-width:200px;">${c.titulo}</div></td>
+      <td style="font-size:12px;color:var(--text2);">${c.cc_sap}</td>
+      <td style="font-size:12px;color:var(--text2);">${c.numero_nf_campo || '—'}</td>
+      <td style="font-size:12px;">${fmtData(c.data_vencimento)}</td>
+      <td>${pgto}</td>
+      <td class="td-right" style="font-weight:600;">${c.valor_nf > 0 ? fmtMoeda(c.valor_nf) : '—'}</td>
+      <td class="td-center"><a class="link-card" href="${c.link}" target="_blank">Abrir ↗</a></td>
+    </tr>`;
+  }).join('');
+
+  const total = filtrado.reduce((s, c) => s + c.valor_nf, 0);
+  tfoot.innerHTML = `<tr>
+    <td colspan="6" style="font-size:11px;color:var(--text3);">${filtrado.length} card(s)</td>
+    <td class="td-right" style="font-weight:700;">${fmtMoeda(total)}</td>
+    <td></td>
+  </tr>`;
+}
+
+function limparFiltroJanela() {
+  const de  = document.getElementById('fj-de');
+  const ate = document.getElementById('fj-ate');
+  if (de)  de.value  = '';
+  if (ate) ate.value = '';
+  renderTabelaJanela();
+}
+
+
+function renderJanelas() {
+  const cards = window._cardsP || [];
+  const agendados = cards.filter(c => c.status === 'agendado' && c.data_vencimento)
+    .sort((a,b) => a.data_vencimento - b.data_vencimento);
+  const semdata   = cards.filter(c => c.status === 'semdata');
+  const totalAg   = agendados.reduce((s,c) => s + c.valor_nf, 0);
+  const totalSem  = semdata.reduce((s,c) => s + c.valor_nf, 0);
+
+  document.getElementById('janelas-metrics').innerHTML = `
+    <div class="metric"><div class="metric-label">Agendados</div><div class="metric-value amber">${agendados.length}</div><div class="metric-sub">${fmtCurto(totalAg)}</div></div>
+    <div class="metric"><div class="metric-label">Sem data</div><div class="metric-value">${semdata.length}</div><div class="metric-sub">${fmtCurto(totalSem)}</div></div>
+    <div class="metric"><div class="metric-label">Próxima quinta</div><div class="metric-value" style="font-size:16px;">${fmtData(proximaQuinta())}</div><div class="metric-sub">${agendados.filter(c=>fmtData(c.data_vencimento)===fmtData(proximaQuinta())).length} card(s)</div></div>
+    <div class="metric"><div class="metric-label">Total a pagar</div><div class="metric-value" style="font-size:18px;color:#185FA5;">${fmtCurto(totalAg)}</div><div class="metric-sub">Cards com data</div></div>
+  `;
+
+  // Agrupar por data
+  const grupos = {};
+  agendados.forEach(c => {
+    const k = fmtData(c.data_vencimento);
+    if (!grupos[k]) grupos[k] = [];
+    grupos[k].push(c);
+  });
+
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  const proxQ = proximaQuinta();
+
+  let html = '';
+
+  // Cards sem data
+  if (semdata.length) {
+    html += `
+      <div class="card" style="margin-bottom:1rem;padding:1rem 1.25rem;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+          <div style="font-weight:600;font-size:13px;color:var(--text2);">📅 Sem data definida</div>
+          <span class="badge badge-amber">${semdata.length} cards · ${fmtMoeda(totalSem)}</span>
+        </div>
+        <div class="table-wrap" style="margin:0;">
+          <table><thead><tr><th>Título</th><th>Fase</th><th>CC SAP</th><th class="td-right">Valor</th><th class="td-center">Card</th></tr></thead>
+          <tbody>${semdata.map(c => `<tr>
+            <td><div class="td-title">${c.titulo}</div></td>
+            <td><span class="badge badge-gray" style="font-size:10px;">${c.fase}</span></td>
+            <td style="font-size:12px;color:var(--text2);">${c.cc_sap}</td>
+            <td class="td-right">${c.valor_nf > 0 ? fmtMoeda(c.valor_nf) : '—'}</td>
+            <td class="td-center"><a class="link-card" href="${c.link}" target="_blank">↗</a></td>
+          </tr>`).join('')}</tbody></table>
+        </div>
+      </div>`;
+  }
+
+  // Cards agendados por data
+  Object.keys(grupos).sort().forEach(data => {
+    const grupo = grupos[data];
+    const total = grupo.reduce((s,c) => s+c.valor_nf, 0);
+    const isProxQ = fmtData(proxQ) === data;
+    const borderColor = isProxQ ? '#185FA5' : '#1D9E75';
+    html += `
+      <div class="card" style="margin-bottom:1rem;padding:1rem 1.25rem;border-left:3px solid ${borderColor};">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+          <div style="font-weight:700;font-size:14px;">📅 ${data} ${isProxQ ? '<span class="badge badge-blue" style="font-size:10px;margin-left:6px;">Próxima quinta</span>' : ''}</div>
+          <span style="font-weight:700;color:${borderColor};font-size:14px;">${fmtMoeda(total)}</span>
+        </div>
+        <div class="table-wrap" style="margin:0;">
+          <table><thead><tr><th>Título</th><th>Fase</th><th>CC SAP</th><th>Forma pgto</th><th class="td-right">Valor</th><th class="td-center">Card</th></tr></thead>
+          <tbody>${grupo.map(c => `<tr>
+            <td><div class="td-title">${c.titulo}</div></td>
+            <td><span class="badge badge-gray" style="font-size:10px;">${c.fase}</span></td>
+            <td style="font-size:12px;color:var(--text2);">${c.cc_sap}</td>
+            <td>${c.forma_pgto ? `<span class="badge badge-gray" style="font-size:10px;">${c.forma_pgto}</span>` : '—'}</td>
+            <td class="td-right" style="font-weight:600;">${c.valor_nf > 0 ? fmtMoeda(c.valor_nf) : '—'}</td>
+            <td class="td-center"><a class="link-card" href="${c.link}" target="_blank">↗</a></td>
+          </tr>`).join('')}</tbody>
+          <tfoot><tr><td colspan="4" style="font-size:11px;color:var(--text3);">${grupo.length} card(s)</td><td class="td-right" style="font-weight:700;">${fmtMoeda(total)}</td><td></td></tr></tfoot>
+          </table>
+        </div>
+      </div>`;
+  });
+
+  if (!html) html = `<div style="text-align:center;padding:3rem;color:var(--text3);font-size:13px;">Nenhum pagamento agendado no momento.</div>`;
+  document.getElementById('janelas-lista').innerHTML = html;
+
+  renderChartJanelas(cards);
+}
+
+// ── Tabs ──
+function trocarAba(aba, btn) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('panel-' + aba).classList.add('active');
+  if (aba === 'aprovacao') renderAprovacao();
+  if (aba === 'janelas') { renderJanelas(); renderTabelaJanela(); }
+  if (aba === 'detalhamento') renderTabela();
+  if (aba === 'cronograma') initCronograma();
+}
+
+// ── IDs dos campos da aba Aprovação (confirmados pelo Pipefy) ──
+const AP = {
+  tipo_solicitacao:  'qual_o_tipo_de_solicita_o',
+  titulo:            'o_que_voc_quer_cotar_contratar_solicitar',
+  anexar_nf:         'anexar_nf',
+  valor_nf:          'valor_nf',
+  numero_nf:         'n_mero_da_nf',
+  motivo:            'motivo_de_n_o_ter_entrado_no_processo_de_compras',
+  cc_sap:            'centro_de_custo_partage',
+  responsavel_cc:    'respons_vel_pelo_centro_de_custo',
+  parcelamento:      'esse_card_referente_ao_parcelamento_conta_mensal',
+  necessita_cotacao: 'necessita_de_cota_o',
+  demanda_rh:        'demanda_do_rh',
+  email:             'seu_email_institucional',
+  // Cotações (IDs confirmados via console)
+  forn1:  'fornecedor_1',  qtd1:  'quantidade_1',  unit1:  'valor_unit_rio_1',  total1: 'valor_total_1',
+  forn2:  'fornecedor_2',  qtd2:  'quantidade_2',  unit2:  'valor_unit_rio_2',  total2: 'valor_total_2',
+  forn3:  'fonecedor_3',   qtd3:  'quantidade_3',  unit3:  'valor_unit_rio_3',  total3: 'valor_total_3',
+  forn_sugerido:  'fornecedor_sugerido',
+  motivo_escolha: 'motivo_da_escolha',
+  orcamento:      'qual_or_amento_voc_tem',
+};
+
+const FASE_APROV     = '4. Aprovação Obra';
+const ID_FASE_PEDIDO = '335368961'; // 5. Pedido
+const ID_FASE_REPROV = '335368979'; // Reprovados
+
+let _cardsAprov = [];
+
+function processarAprovacao(rawCards) {
+  _cardsAprov = rawCards
+    .filter(c => c.current_phase?.name === FASE_APROV)
+    .map(c => {
+      const get = id => {
+        // Pipefy retorna fields com {field:{id}, value} na query principal
+        // mas alguns contextos chegam como {id, value} — suporta ambos
+        const f = c.fields.find(f => (f.field?.id ?? f.id) === id);
+        if (!f || !f.value) return '';
+        return f.value.replace(/^\["|"\]$/g, '').replace(/","/g, ', ');
+      };
+      const getNum = id => parseVal(get(id));
+
+      // Anexos
+      let anexos = [];
+      try {
+        const raw = c.fields.find(f => (f.field?.id ?? f.id) === AP.anexar_nf)?.value || '[]';
+        const urls = JSON.parse(raw);
+        anexos = urls.map(url => {
+          const clean = url.split('?')[0];
+          const nome  = decodeURIComponent(clean.split('/').pop());
+          const ext   = nome.split('.').pop().toUpperCase();
+          return { url, nome, ext };
+        });
+      } catch(e) {}
+      // Complementa com attachments nativos do Pipefy (botão "Adicionar novos arquivos")
+      if (c.attachments?.length) {
+        const existingUrls = new Set(anexos.map(a => a.url.split('?')[0]));
+        for (const att of c.attachments) {
+          const clean = (att.url || '').split('?')[0];
+          if (!existingUrls.has(clean)) {
+            const nome = decodeURIComponent(clean.split('/').pop());
+            const ext  = nome.split('.').pop().toUpperCase();
+            anexos.push({ url: att.url, nome, ext });
+          }
+        }
+      }
+      // Complementa com attachments nativos do Pipefy (aba "Anexos" do card)
+      if (c.attachments?.length) {
+        const existingUrls = new Set(anexos.map(a => a.url.split('?')[0]));
+        for (const att of c.attachments) {
+          const clean = (att.url || '').split('?')[0];
+          if (!existingUrls.has(clean)) {
+            const nome = att.filename || decodeURIComponent(clean.split('/').pop());
+            const ext  = nome.split('.').pop().toUpperCase();
+            anexos.push({ url: att.url, nome, ext });
+          }
+        }
+      }
+
+      // Cotações
+      const cotacoes = [
+        { forn: get(AP.forn1), qtd: getNum(AP.qtd1), unit: getNum(AP.unit1), total: getNum(AP.total1) },
+        { forn: get(AP.forn2), qtd: getNum(AP.qtd2), unit: getNum(AP.unit2), total: getNum(AP.total2) },
+        { forn: get(AP.forn3), qtd: getNum(AP.qtd3), unit: getNum(AP.unit3), total: getNum(AP.total3) },
+      ].filter(q => q.forn || q.total > 0);
+
+      return {
+        id:             c.id,
+        titulo:         c.title || get(AP.titulo) || '(sem título)',
+        tipo:           get(AP.tipo_solicitacao),
+        email:          get(AP.email),
+        valor_nf:       getNum(AP.valor_nf),
+        numero_nf:      get(AP.numero_nf),
+        motivo:         get(AP.motivo),
+        cc_sap:         get(AP.cc_sap),
+        resp_cc:        get(AP.responsavel_cc),
+        parcelamento:   get(AP.parcelamento),
+        necessita_cot:  get(AP.necessita_cotacao),
+        demanda_rh:     get(AP.demanda_rh),
+        cotacoes,
+        forn_sugerido:  get(AP.forn_sugerido),
+        motivo_escolha: get(AP.motivo_escolha),
+        orcamento:      getNum(AP.orcamento),
+        anexos,
+        link: `https://app.pipefy.com/open-cards/${c.id}`,
+        criado_em: c.created_at ? new Date(c.created_at) : null,
+      };
+    });
+
+  document.getElementById('badge-aprov').textContent = _cardsAprov.length;
+}
+
+let _aprovFiltro = 'todos';
+
+function filtrarAprov(filtro, btn) {
+  _aprovFiltro = filtro;
+  document.querySelectorAll('.aprov-filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderAprovacao();
+}
+
+function diasAguardando(criado_em) {
+  if (!criado_em) return null;
+  const diff = Date.now() - criado_em.getTime();
+  return Math.floor(diff / (1000 * 60 * 60 * 24));
+}
+
+function renderAprovacao() {
+  document.getElementById('updated-at-aprov').textContent =
+    'Atualizado às ' + new Date().toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
+
+  const todos = _cardsAprov;
+  const hoje  = new Date();
+
+  // Enriquecer com dias
+  const comDias = todos.map(c => ({ ...c, dias: diasAguardando(c.criado_em) }));
+
+  // Métricas
+  const totalValor   = todos.reduce((s,c) => s + c.valor_nf, 0);
+  const urgentes     = comDias.filter(c => c.dias !== null && c.dias >= 5).length;
+  const comCotacao   = todos.filter(c => c.cotacoes.length > 0).length;
+  const semCotacao   = todos.filter(c => c.cotacoes.length === 0 && c.necessita_cot === 'Sim').length;
+  const comAnexo     = todos.filter(c => c.anexos.length > 0).length;
+  const mediaDias    = comDias.filter(c => c.dias !== null).length
+    ? Math.round(comDias.filter(c=>c.dias!==null).reduce((s,c)=>s+c.dias,0) / comDias.filter(c=>c.dias!==null).length)
+    : 0;
+
+  document.getElementById('aprov-metrics').innerHTML = `
+    <div class="aprov-metric-box" style="border-left-color:#185FA5;">
+      <div class="aprov-metric-val" style="color:#185FA5;">${todos.length}</div>
+      <div class="aprov-metric-label">Cards em aprovação</div>
+      <div class="aprov-metric-sub">Fase 4. Aprovação Obra</div>
+    </div>
+    <div class="aprov-metric-box" style="border-left-color:#1D9E75;">
+      <div class="aprov-metric-val" style="color:#1D9E75;font-size:20px;">${fmtMoeda(totalValor)}</div>
+      <div class="aprov-metric-label">Valor total pendente</div>
+      <div class="aprov-metric-sub">Soma de todos os cards</div>
+    </div>
+    <div class="aprov-metric-box" style="border-left-color:${urgentes>0?'#A32D2D':'#9CA3AF'};">
+      <div class="aprov-metric-val" style="color:${urgentes>0?'#A32D2D':'#3B6D11'};">${urgentes}</div>
+      <div class="aprov-metric-label">Urgentes (+5 dias)</div>
+      <div class="aprov-metric-sub">Média: ${mediaDias} dia(s) aguardando</div>
+    </div>
+    <div class="aprov-metric-box" style="border-left-color:#EF9F27;">
+      <div class="aprov-metric-val" style="color:#BA7517;">${comCotacao}</div>
+      <div class="aprov-metric-label">Com cotações</div>
+      <div class="aprov-metric-sub">${semCotacao > 0 ? `${semCotacao} precisam de cotação` : 'Nenhuma pendente'}</div>
+    </div>
+    <div class="aprov-metric-box" style="border-left-color:#7F77DD;">
+      <div class="aprov-metric-val" style="color:#5B4FCF;">${comAnexo}</div>
+      <div class="aprov-metric-label">Com anexos (NF/doc)</div>
+      <div class="aprov-metric-sub">${todos.length - comAnexo} sem documento</div>
+    </div>
+  `;
+
+  // Filtro
+  let lista = [...comDias];
+  if (_aprovFiltro === 'urgente')     lista = lista.filter(c => c.dias !== null && c.dias >= 5);
+  if (_aprovFiltro === 'sem-cotacao') lista = lista.filter(c => c.cotacoes.length === 0 && c.necessita_cot === 'Sim');
+  if (_aprovFiltro === 'com-cotacao') lista = lista.filter(c => c.cotacoes.length > 0);
+  if (_aprovFiltro === 'com-anexo')   lista = lista.filter(c => c.anexos.length > 0);
+
+  // Ordem
+  const ordem = document.getElementById('aprov-ordem')?.value || 'dias-desc';
+  if (ordem === 'dias-desc')  lista.sort((a,b) => (b.dias??-1) - (a.dias??-1));
+  if (ordem === 'dias-asc')   lista.sort((a,b) => (a.dias??999) - (b.dias??999));
+  if (ordem === 'valor-desc') lista.sort((a,b) => b.valor_nf - a.valor_nf);
+  if (ordem === 'valor-asc')  lista.sort((a,b) => a.valor_nf - b.valor_nf);
+
+  const el = document.getElementById('aprov-lista');
+  if (!lista.length) {
+    el.innerHTML = `
+      <div class="aprov-empty">
+        <div style="font-size:14px;font-weight:600;color:var(--text);">
+          ${_aprovFiltro==='todos' ? 'Nenhum card em aprovação' : 'Nenhum card neste filtro'}
+        </div>
+        <div style="font-size:12px;margin-top:6px;">
+          ${_aprovFiltro==='todos' ? 'A fila está limpa por enquanto.' : 'Tente outro filtro acima'}
+        </div>
+      </div>`;
+    return;
+  }
+
+  el.innerHTML = lista.map(c => {
+    // Urgência visual
+    const dias = c.dias;
+    let urgClass = 'normal', urgColor = '#9CA3AF', urgLabel = dias !== null ? `${dias}d aguardando` : 'sem data';
+    if (dias !== null && dias >= 5)  { urgClass = 'urgente'; urgColor = '#A32D2D'; }
+    else if (dias !== null && dias >= 3) { urgClass = 'atencao'; urgColor = '#BA7517'; }
+
+    // Tags de contexto visíveis no header
+    const tags = [
+      c.tipo        ? `<span class="badge badge-gray" style="font-size:10px;">${c.tipo}</span>` : '',
+      c.cc_sap      ? `<span style="font-size:11px;color:var(--text2);">${c.cc_sap}</span>` : '',
+      c.valor_nf > 0 ? `<span style="font-weight:700;color:#185FA5;font-size:13px;">${fmtMoeda(c.valor_nf)}</span>` : '',
+      c.cotacoes.length > 0
+        ? `<span class="badge badge-amber" style="font-size:10px;">${c.cotacoes.length} cotação${c.cotacoes.length>1?'ões':''}</span>`
+        : (c.necessita_cot === 'Sim' ? `<span class="badge badge-red" style="font-size:10px;">Cotação pendente</span>` : ''),
+      c.anexos.length > 0 ? `<span class="badge badge-blue" style="font-size:10px;">${c.anexos.length} anexo${c.anexos.length>1?'s':''}</span>` : '',
+    ].filter(Boolean).join('');
+
+    // Corpo — Informações
+    const infoFields = [
+      { label: 'Tipo de solicitação', val: c.tipo },
+      { label: 'Centro de custo',     val: c.cc_sap },
+      { label: 'Responsável CC',      val: c.resp_cc },
+      { label: 'Solicitante',         val: c.email },
+      { label: 'Nº NF',               val: c.numero_nf },
+      { label: 'Valor NF',            val: c.valor_nf > 0 ? fmtMoeda(c.valor_nf) : '', big: true },
+      { label: 'Parcelamento',         val: c.parcelamento },
+      { label: 'Demanda RH',           val: c.demanda_rh },
+      { label: 'Motivo',               val: c.motivo, wide: true },
+    ].filter(f => f.val && String(f.val).trim());
+
+    const infoHtml = infoFields.length ? `
+      <div class="aprov-section">
+        <div class="aprov-section-title">Informações</div>
+        <div class="aprov-fields">
+          ${infoFields.map(f => `
+            <div class="aprov-field" ${f.wide ? 'style="grid-column:1/-1;"' : ''}>
+              <div class="aprov-field-label">${f.label}</div>
+              <div class="aprov-field-value${f.big?' big':''}">${f.val}</div>
+            </div>`).join('')}
+        </div>
+      </div>` : '';
+
+    // Cotações
+    let cotacaoHtml = '';
+    if (c.cotacoes.length > 0) {
+      const totais = c.cotacoes.filter(q => q.total > 0).map(q => q.total);
+      const menorTotal = totais.length ? Math.min(...totais) : 0;
+      cotacaoHtml = `
+        <div class="aprov-section">
+          <div class="aprov-section-title">Cotações</div>
+          <div style="overflow-x:auto;border:1px solid var(--border);border-radius:var(--radius-sm);">
+            <table class="cotacao-tbl">
+              <thead><tr><th>#</th><th>Fornecedor</th><th class="td-right">Qtd</th><th class="td-right">Unit.</th><th class="td-right">Total</th></tr></thead>
+              <tbody>
+                ${c.cotacoes.map((q,i) => {
+                  const isMenor    = q.total>0 && q.total===menorTotal && totais.length>1;
+                  const isSugerido = c.forn_sugerido && String(q.forn)===String(c.forn_sugerido);
+                  const bg = isSugerido ? 'background:#EAF3DE;' : isMenor ? 'background:#EFF6FF;' : '';
+                  return `<tr style="${bg}">
+                    <td style="color:var(--text3);font-size:11px;">${i+1}</td>
+                    <td style="font-weight:500;">${q.forn||'—'}
+                      ${isSugerido?'<span style="font-size:9px;font-weight:700;background:#3B6D11;color:#fff;padding:1px 5px;border-radius:3px;margin-left:4px;">escolhido</span>':''}
+                      ${isMenor&&!isSugerido?'<span style="font-size:9px;font-weight:700;background:#185FA5;color:#fff;padding:1px 5px;border-radius:3px;margin-left:4px;">menor</span>':''}
+                    </td>
+                    <td class="td-right" style="font-size:12px;">${q.qtd>0?q.qtd:'—'}</td>
+                    <td class="td-right" style="font-size:12px;">${q.unit>0?fmtMoeda(q.unit):'—'}</td>
+                    <td class="td-right" style="font-weight:700;">${q.total>0?fmtMoeda(q.total):'—'}</td>
+                  </tr>`;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
+          ${c.motivo_escolha?`<div style="margin-top:10px;font-size:12px;color:var(--text2);background:var(--surface2);padding:8px 12px;border-radius:var(--radius-sm);border-left:3px solid #1D9E75;"><strong>Motivo da escolha:</strong> ${c.motivo_escolha}</div>`:''}
+          ${c.orcamento>0?`<div style="margin-top:6px;font-size:12px;color:var(--text2);"><strong>Orçamento disponível:</strong> ${fmtMoeda(c.orcamento)}</div>`:''}
+        </div>`;
+    } else if (c.necessita_cot === 'Sim') {
+      cotacaoHtml = `
+        <div class="aprov-section">
+          <div class="aprov-section-title">Cotações</div>
+          <div style="background:#FFF3CD;border:1px solid #F0D060;border-radius:var(--radius-sm);padding:12px 16px;font-size:13px;color:#7A5800;display:flex;align-items:center;gap:10px;">
+            ⚠️ Este card necessita de cotação mas ainda não foi preenchida.
+          </div>
+        </div>`;
+    }
+
+    // Anexos
+    const anexosHtml = c.anexos.length ? `
+      <div class="aprov-section">
+        <div class="aprov-section-title">Anexos (${c.anexos.length})</div>
+        <div class="attach-list">
+          ${c.anexos.map((a,ai) => `
+            <button class="attach-btn" onclick="toggleViewer('${c.id}',${ai})">
+              <span style="font-size:18px;">${iconAnexo(a.ext)}</span>
+              <span class="attach-btn-name">${a.nome}</span>
+              <span style="font-size:10px;color:var(--text3);flex-shrink:0;">${a.ext}</span>
+            </button>`).join('')}
+        </div>
+        <div id="viewer-${c.id}" style="display:none;margin-top:12px;border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden;"></div>
+      </div>` : '';
+
+    // Ações
+    const acoesHtml = `
+      <div class="aprov-section">
+        <div class="aprov-section-title">Ações</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+          <button class="btn-aprov aprovar" id="btn-aprov-${c.id}" onclick="moverCard('${c.id}','${ID_FASE_PEDIDO}','aprov')">Aprovar → Pedido</button>
+          <button class="btn-aprov reprovar" id="btn-reprov-${c.id}" onclick="moverCard('${c.id}','${ID_FASE_REPROV}','reprov')">Reprovar</button>
+          <a class="link-card" href="${c.link}" target="_blank" style="margin-left:auto;font-size:12px;">Abrir no Pipefy ↗</a>
+        </div>
+        <div id="msg-acao-${c.id}" style="display:none;margin-top:8px;font-size:12px;font-weight:500;"></div>
+      </div>`;
+
+    return `
+      <div class="aprov-card" id="acard-${c.id}">
+        <div class="aprov-card-header" onclick="toggleAprovCard('${c.id}')">
+          <div class="aprov-card-urgency" style="background:${urgColor};"></div>
+          <div class="aprov-card-header-inner">
+            <div style="flex:1;min-width:0;">
+              <div class="aprov-card-title">${c.titulo}</div>
+              <div class="aprov-card-meta">
+                <span class="aprov-dias ${urgClass}">${urgLabel}</span>
+                ${tags}
+              </div>
+            </div>
+            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0;">
+              <span class="aprov-chevron">▼</span>
+            </div>
+          </div>
+        </div>
+        <div class="aprov-body">
+          <div class="aprov-body-inner">
+            ${infoHtml}${cotacaoHtml}${anexosHtml}${acoesHtml}
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function toggleAprovCard(id) {
+  document.getElementById('acard-' + id).classList.toggle('open');
+}
+
+function iconAnexo(ext) {
+  const e = (ext||'').toLowerCase();
+  if (e === 'pdf') return '📄';
+  if (['jpg','jpeg','png','gif','webp','svg'].includes(e)) return '🖼️';
+  if (['xlsx','xls','csv'].includes(e)) return '📊';
+  if (['docx','doc'].includes(e)) return '📝';
+  return '📎';
+}
+
+// Viewer inline — clique no botão abre/fecha dentro do próprio card
+function toggleViewer(cardId, idx) {
+  const card  = _cardsAprov.find(c => c.id === cardId);
+  const el    = document.getElementById('viewer-' + cardId);
+  const anexo = card.anexos[idx];
+
+  // Clicou no mesmo → fecha
+  if (el.dataset.idx === String(idx) && el.style.display !== 'none') {
+    el.style.display = 'none'; el.innerHTML = ''; el.dataset.idx = ''; return;
+  }
+
+  el.dataset.idx = String(idx);
+  const ext  = anexo.ext.toLowerCase();
+  const isImg = ['jpg','jpeg','png','gif','webp','svg'].includes(ext);
+  const isPdf = ext === 'pdf';
+
+  let content = '';
+  if (isImg) {
+    content = `<img src="${anexo.url}" style="max-width:100%;max-height:75vh;display:block;margin:0 auto;" onerror="this.parentElement.innerHTML='<div style=padding:16px;color:var(--text2);font-size:13px;>Não foi possível carregar a imagem inline. <a href=\\'${anexo.url}\\' target=\\'_blank\\' style=color:var(--blue);>Abrir em nova aba ↗</a></div>'" />`;
+  } else if (isPdf) {
+    content = `<iframe src="${anexo.url}" style="width:100%;height:75vh;border:none;display:block;" onerror="this.outerHTML='erro'"></iframe>
+    <div style="padding:8px 12px;background:var(--surface2);border-top:1px solid var(--border);font-size:11px;color:var(--text3);">
+      Se o PDF não carregar, <a href="${anexo.url}" target="_blank" style="color:var(--blue);">clique aqui para abrir ↗</a>
+    </div>`;
+  } else {
+    content = `<div style="padding:24px;text-align:center;color:var(--text2);font-size:13px;">
+      Este tipo de arquivo não pode ser visualizado inline.<br><br>
+      <a href="${anexo.url}" target="_blank" class="btn-aprov aprovar" style="text-decoration:none;display:inline-block;">Abrir arquivo ↗</a>
+    </div>`;
+  }
+
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--surface2);border-bottom:1px solid var(--border);">
+      <span style="font-size:12px;font-weight:600;color:var(--text2);">${iconAnexo(anexo.ext)} ${anexo.nome}</span>
+      <button onclick="toggleViewer('${cardId}',${idx})" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text3);line-height:1;padding:0 4px;">✕</button>
+    </div>
+    ${content}`;
+  el.style.display = 'block';
+}
+
+// Mover card via API Pipefy
+async function moverCard(cardId, faseId, tipo) {
+  const btnA = document.getElementById('btn-aprov-'  + cardId);
+  const btnR = document.getElementById('btn-reprov-' + cardId);
+  const msg  = document.getElementById('msg-acao-'   + cardId);
+
+  btnA.disabled = btnR.disabled = true;
+  msg.style.display = 'block';
+  msg.style.color   = 'var(--text2)';
+  msg.textContent   = tipo === 'aprov' ? 'Aprovando...' : 'Reprovando...';
+
+  try {
+    const token = localStorage.getItem('pipefy_token');
+    const res = await fetch(API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ query:
+        `mutation { moveCardToPhase(input: { card_id: ${cardId}, destination_phase_id: ${faseId} }) { card { id current_phase { name } } } }`
+      })
+    });
+    const data = await res.json();
+    if (data.errors) throw new Error(data.errors[0].message);
+
+    const novaFase = data.data.moveCardToPhase.card.current_phase.name;
+    msg.style.color = tipo === 'aprov' ? '#3B6D11' : '#A32D2D';
+    msg.textContent = tipo === 'aprov'
+      ? `Aprovado! Movido para "${novaFase}".`
+      : `Reprovado. Movido para "${novaFase}".`;
+
+    // Remove da lista após animação
+    setTimeout(() => {
+      _cardsAprov = _cardsAprov.filter(c => c.id !== cardId);
+      document.getElementById('badge-aprov').textContent = _cardsAprov.length;
+      const cardEl = document.getElementById('acard-' + cardId);
+      if (cardEl) { cardEl.style.transition = 'opacity .35s'; cardEl.style.opacity = '0'; }
+      setTimeout(() => renderAprovacao(), 400);
+    }, 2000);
+
+  } catch(err) {
+    msg.style.color   = '#A32D2D';
+    msg.textContent   = 'Erro: ' + err.message;
+    btnA.disabled = btnR.disabled = false;
+  }
+}
+</script>
+
+<!-- ═══════════════════ CRONOGRAMA JS ═══════════════════ -->
+<div class="crono-lightbox" id="crono-lightbox">
+  <span class="crono-lb-close" onclick="cronoFechaLightbox()">×</span>
+  <div class="crono-lb-counter" id="crono-lb-counter"></div>
+  <button class="crono-lb-nav crono-lb-prev" onclick="cronoLbNavegar(-1)">‹</button>
+  <img id="crono-lb-img" src="" alt="" onclick="cronoFechaLightbox()">
+  <button class="crono-lb-nav crono-lb-next" onclick="cronoLbNavegar(1)">›</button>
+  <div class="crono-lb-info">
+    <div class="crono-lb-nome" id="crono-lb-nome"></div>
+    <div class="crono-lb-data" id="crono-lb-data"></div>
+  </div>
+</div>
+
+<!-- Modal: novo/editar local -->
+<div id="crono-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1500;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:white;border-radius:10px;width:100%;max-width:440px;box-shadow:0 20px 60px rgba(0,0,0,.2);animation:fadeUp .2s ease;">
+    <div style="padding:18px 22px 14px;border-bottom:1px solid var(--border);">
+      <div style="font-size:14px;font-weight:600;color:var(--text);" id="crono-modal-title">Novo local</div>
+      <div style="font-size:11px;color:var(--text2);margin-top:2px;" id="crono-modal-sub"></div>
+    </div>
+    <div style="padding:18px 22px;display:flex;flex-direction:column;gap:13px;">
+      <div>
+        <div style="font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;">Nome do local *</div>
+        <input id="crono-modal-nome" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;background:var(--surface);color:var(--text);font-family:inherit;" placeholder="Ex: Bar Heineken, Parrilla, Wine Bar...">
+        <div style="font-size:10px;color:var(--text3);margin-top:3px;">Use o mesmo nome da pasta no Google Drive.</div>
+      </div>
+      <div>
+        <div style="font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;">Link da pasta no Drive *</div>
+        <input id="crono-modal-drive" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;background:var(--surface);color:var(--text);font-family:inherit;" placeholder="https://drive.google.com/drive/folders/...">
+        <div style="font-size:10px;color:var(--text3);margin-top:3px;">Cole o link de compartilhamento da pasta.</div>
+      </div>
+      <div>
+        <div style="font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;">Descrição (opcional)</div>
+        <input id="crono-modal-desc" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;background:var(--surface);color:var(--text);font-family:inherit;" placeholder="Ex: Área do bar, piso térreo">
+      </div>
+      <div id="crono-modal-pos" style="background:var(--surface2);border-radius:6px;padding:8px 12px;font-size:11px;color:var(--text2);display:none;">📍 Posição na planta registrada</div>
+    </div>
+    <div style="padding:12px 22px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;">
+      <button onclick="cronoFecharModal()" style="padding:7px 14px;background:none;border:1px solid var(--border);border-radius:6px;font-size:12px;cursor:pointer;color:var(--text);">Cancelar</button>
+      <button onclick="cronoSalvarLocal()" style="padding:7px 16px;background:#C4714A;color:white;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════════════════
+//  ESTADO
+// ════════════════════════════════════════════════════════
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyWkcvF-1HX2YH24_9AZIpwruQxc1m3rwMLQw5-x-biOvFy-bSkAKkSU3Ut-DOdaESvpQ/exec';
+
+let cronoEstado = { locais:[] };
+let cronoModoAdicionar = false;
+let cronoEditandoId    = null;
+let cronoZonaAtiva     = null;
+
+// ── Variáveis de desenho ──
+let _drawAtivo = false, _drawStart = null, _drawRect = null;
+
+async function initCronograma() {
+  // Planta fica local (sessionStorage) pois é uma imagem grande
+  const p = sessionStorage.getItem('crono_planta_b64');
+  if (p) cronoMostrarPlanta(p);
+
+  // Locais vêm do Sheets — sincronizado para todos
+  await cronoCarregarDoSheets();
+}
+
+async function cronoCarregarDoSheets() {
+  try {
+    const res = await fetch(SCRIPT_URL + '?acao=carregar');
+    const d   = await res.json();
+    if (d.locais) {
+      cronoEstado.locais = d.locais;
+      cronoRenderLocais();
+      cronoRenderZonas();
+    }
+  } catch(e) {
+    console.warn('Erro ao carregar locais:', e);
+  }
+}
+
+async function cronoSalvar() {
+  if (cronoEstado.plantaB64) sessionStorage.setItem('crono_planta_b64', cronoEstado.plantaB64);
+  try {
+    const dados = encodeURIComponent(JSON.stringify(cronoEstado.locais));
+    const url   = SCRIPT_URL + '?acao=salvar&dados=' + dados;
+    await fetch(url, { method:'GET', mode:'no-cors' });
+  } catch(e) {
+    console.warn('Erro ao salvar locais:', e);
+  }
+}
+
+function cronoCarregarImagem(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const r = new FileReader();
+  r.onload = ev => { cronoEstado.plantaB64 = ev.target.result; cronoSalvar(); cronoMostrarPlanta(ev.target.result); };
+  r.readAsDataURL(file);
+}
+
+function cronoDrop(e) {
+  e.preventDefault();
+  const file = e.dataTransfer.files[0];
+  if (file?.type.startsWith('image/')) cronoCarregarImagem({ target:{ files:[file] } });
+}
+
+function cronoMostrarPlanta(src) {
+  document.getElementById('crono-onboard').style.display = 'none';
+  document.getElementById('crono-planta-container').style.display = 'block';
+  document.getElementById('crono-hint').style.display = 'block';
+  document.getElementById('crono-btn-adicionar').style.display = 'inline-flex';
+  const img = document.getElementById('crono-planta-img');
+  img.src = src;
+  img.onload = () => { cronoRenderZonas(); cronoIniciarDesenho(); };
+}
+
+// ════════════════════════════════════════════════════════
+//  MODO DESENHO
+// ════════════════════════════════════════════════════════
+function cronoToggleModo() {
+  if (!cronoEstado.plantaB64) { alert('Carregue a planta primeiro.'); return; }
+  cronoModoAdicionar = !cronoModoAdicionar;
+  document.getElementById('crono-modo-badge').style.display = cronoModoAdicionar ? 'flex' : 'none';
+  document.getElementById('crono-btn-adicionar').textContent = cronoModoAdicionar ? '✕ Cancelar' : '+ Adicionar área';
+  document.getElementById('crono-hint').textContent = cronoModoAdicionar
+    ? 'Clique para adicionar pontos · duplo clique para fechar'
+    : 'Passe o mouse sobre uma área para ver o local';
+  cronoAtivarDesenhoSVG(cronoModoAdicionar);
+  if (cronoModoAdicionar) cronoTrocarAba('locais', document.querySelectorAll('.crono-ptab')[1]);
+}
+
+function cronoIniciarDesenho() {
+  const container = document.getElementById('crono-planta-container');
+  const svg = document.getElementById('crono-draw-svg');
+  let pts = [];
+
+  function svgPt(e) {
+    const r = container.getBoundingClientRect();
+    return {
+      x: Math.min(Math.max(e.clientX - r.left, 0), container.offsetWidth),
+      y: Math.min(Math.max(e.clientY - r.top,  0), container.offsetHeight)
+    };
+  }
+
+  function renderPreview(cursor) {
+    svg.querySelectorAll('.draw-tmp').forEach(el => el.remove());
+    if (!pts.length) return;
+    const allPts = cursor ? [...pts, cursor] : pts;
+    if (allPts.length >= 2) {
+      const poly = document.createElementNS('http://www.w3.org/2000/svg','polygon');
+      poly.setAttribute('class','crono-draw-preview draw-tmp');
+      poly.setAttribute('points', allPts.map(p=>p.x+','+p.y).join(' '));
+      poly.setAttribute('pointer-events','none');
+      svg.appendChild(poly);
+    }
+    pts.forEach((p, i) => {
+      const circ = document.createElementNS('http://www.w3.org/2000/svg','circle');
+      circ.setAttribute('cx', p.x); circ.setAttribute('cy', p.y);
+      circ.setAttribute('r', i===0 ? 7 : 5);
+      circ.setAttribute('class','crono-draw-dot draw-tmp'+(i===0?' first':''));
+      circ.setAttribute('pointer-events','all');
+      if (i===0 && pts.length>=3) {
+        circ.style.cursor = 'pointer';
+        circ.addEventListener('click', e => { e.stopPropagation(); fechar(); });
+      }
+      svg.appendChild(circ);
+    });
+  }
+
+  function fechar() {
+    if (pts.length < 3) return;
+    svg.querySelectorAll('.draw-tmp').forEach(el => el.remove());
+    const W = container.offsetWidth || 1, H = container.offsetHeight || 1;
+    const pontos = pts.map(p => ({ px: +(p.x/W).toFixed(4), py: +(p.y/H).toFixed(4) }));
+    pts = [];
+    cronoModoAdicionar = false;
+    // desliga modo no SVG
+    svg.style.pointerEvents = 'none';
+    svg.style.cursor = '';
+    container.style.cursor = '';
+    document.getElementById('crono-modo-badge').style.display = 'none';
+    document.getElementById('crono-btn-adicionar').textContent = '+ Adicionar área';
+    document.getElementById('crono-hint').textContent = 'Passe o mouse sobre uma área para ver o local';
+    cronoEditandoId = null;
+    document.getElementById('crono-modal-title').textContent = 'Nova área';
+    document.getElementById('crono-modal-sub').textContent   = pontos.length + ' pontos';
+    document.getElementById('crono-modal-nome').value  = '';
+    document.getElementById('crono-modal-drive').value = '';
+    document.getElementById('crono-modal-desc').value  = '';
+    document.getElementById('crono-modal-pos').style.display = 'block';
+    document.getElementById('crono-modal-pos').textContent = '📐 Forma desenhada';
+    window._cronoAreaTemp = { pontos };
+    cronoAbrirModal();
+  }
+
+  // Eventos no SVG (modo desenho)
+  svg.addEventListener('click', e => {
+    if (!cronoModoAdicionar) return;
+    e.stopPropagation();
+    const p = svgPt(e);
+    if (pts.length >= 3) {
+      const dx = p.x-pts[0].x, dy = p.y-pts[0].y;
+      if (Math.sqrt(dx*dx+dy*dy) < 14) { fechar(); return; }
+    }
+    pts.push(p);
+    renderPreview(null);
+  });
+
+  svg.addEventListener('dblclick', e => {
+    if (!cronoModoAdicionar || pts.length < 3) return;
+    pts.pop();
+    fechar();
+  });
+
+  svg.addEventListener('mousemove', e => {
+    if (!cronoModoAdicionar || !pts.length) return;
+    renderPreview(svgPt(e));
+  });
+
+  // Clicar fora das zonas (no fundo da planta) desativa zona ativa
+  document.getElementById('crono-planta-area').addEventListener('click', e => {
+    if (cronoModoAdicionar) return;
+    const eZona = e.target.classList.contains('crono-zona-svg');
+    if (!eZona && cronoZonaAtiva) {
+      document.querySelectorAll('.crono-zona-svg').forEach(z => z.classList.remove('active'));
+      cronoZonaAtiva = null;
+      document.getElementById('crono-fotos-title').textContent = 'Selecione um local';
+      document.getElementById('crono-fotos-sub').textContent   = 'Clique em uma área na planta';
+      document.getElementById('crono-fotos-empty').style.display    = 'flex';
+      document.getElementById('crono-fotos-timeline').style.display = 'none';
+    }
+  });
+}
+
+// Liga/desliga o modo desenho no SVG overlay
+function cronoAtivarDesenhoSVG(ativo) {
+  const svg = document.getElementById('crono-draw-svg');
+  if (!svg) return;
+  svg.style.pointerEvents = ativo ? 'all' : 'none';
+  svg.style.cursor = ativo ? 'crosshair' : '';
+}
+
+
+// ════════════════════════════════════════════════════════
+//  RENDER ZONAS
+// ════════════════════════════════════════════════════════
+function cronoRenderZonas() {
+  // Remove zonas antigas (divs legadas + SVG polygons)
+  document.querySelectorAll('.crono-zona').forEach(e => e.remove());
+  document.querySelectorAll('.crono-zona-svg').forEach(e => e.remove());
+  document.querySelectorAll('.crono-zona-group').forEach(e => e.remove());
+
+  const c   = document.getElementById('crono-planta-container');
+  const svg = document.getElementById('crono-draw-svg');
+  const img = document.getElementById('crono-planta-img');
+  const W   = c.offsetWidth  || img.offsetWidth  || 1;
+  const H   = c.offsetHeight || img.offsetHeight || 1;
+
+  cronoEstado.locais.forEach(l => {
+    // Suporte a formato antigo (rect) e novo (pontos)
+    let pontos;
+    if (l.pontos && l.pontos.length) {
+      pontos = l.pontos.map(p => ({ x: p.px * W, y: p.py * H }));
+    } else if (l.left != null) {
+      const x1 = l.left/100*W,   y1 = l.top/100*H;
+      const x2 = x1+l.width/100*W, y2 = y1+l.height/100*H;
+      pontos = [{x:x1,y:y1},{x:x2,y:y1},{x:x2,y:y2},{x:x1,y:y2}];
+    } else return;
+
+    // Centróide para o label
+    const cx = pontos.reduce((s,p)=>s+p.x,0)/pontos.length;
+    const cy = pontos.reduce((s,p)=>s+p.y,0)/pontos.length;
+
+    const g = document.createElementNS('http://www.w3.org/2000/svg','g');
+    g.setAttribute('class','crono-zona-group'+(cronoZonaAtiva===l.id?' active':''));
+    g.setAttribute('id','crono-g-'+l.id);
+
+    const poly = document.createElementNS('http://www.w3.org/2000/svg','polygon');
+    poly.setAttribute('class','crono-zona-svg'+(cronoZonaAtiva===l.id?' active':''));
+    poly.setAttribute('id','crono-zona-'+l.id);
+    poly.setAttribute('points', pontos.map(p=>p.x+','+p.y).join(' '));
+
+    const lbl = document.createElementNS('http://www.w3.org/2000/svg','text');
+    lbl.setAttribute('class','crono-zona-label');
+    lbl.setAttribute('x', cx); lbl.setAttribute('y', cy);
+    lbl.textContent = l.nome;
+
+    g.appendChild(poly);
+    g.appendChild(lbl);
+    svg.appendChild(g);
+
+    g.addEventListener('click', ev => {
+      if (cronoModoAdicionar) return;
+      ev.stopPropagation();
+      // Atualiza active no grupo e no polygon
+      document.querySelectorAll('.crono-zona-group').forEach(x=>x.classList.remove('active'));
+      document.querySelectorAll('.crono-zona-svg').forEach(x=>x.classList.remove('active'));
+      g.classList.add('active'); poly.classList.add('active');
+      cronoAbrirZona(l);
+      cronoTrocarAba('fotos', document.querySelectorAll('.crono-ptab')[0]);
+    });
+  });
+}
+
+function cronoExtrairId(url) {
+  const p = [/\/folders\/([a-zA-Z0-9_-]+)/, /[?&]id=([a-zA-Z0-9_-]+)/, /\/d\/([a-zA-Z0-9_-]+)/];
+  for (const r of p) { const m = url.match(r); if (m) return m[1]; }
+  return /^[a-zA-Z0-9_-]{10,}$/.test(url) ? url : url;
+}
+
+async function cronoSalvarLocal() {
+  const nome  = document.getElementById('crono-modal-nome').value.trim();
+  const drive = document.getElementById('crono-modal-drive').value.trim();
+  const desc  = document.getElementById('crono-modal-desc').value.trim();
+  if (!nome)  { document.getElementById('crono-modal-nome').focus();  return; }
+  if (!drive) { document.getElementById('crono-modal-drive').focus(); return; }
+  const folderId = cronoExtrairId(drive);
+  if (cronoEditandoId) {
+    const idx = cronoEstado.locais.findIndex(l => l.id === cronoEditandoId);
+    if (idx >= 0) cronoEstado.locais[idx] = { ...cronoEstado.locais[idx], nome, driveUrl:drive, folderId, desc };
+  } else {
+    const area = window._cronoAreaTemp || {};
+    cronoEstado.locais.push({
+      id:'l'+Date.now(), nome, desc, driveUrl:drive, folderId,
+      pontos: area.pontos || null,
+      left:area.left??null, top:area.top??null,
+      width:area.width??null, height:area.height??null
+    });
+    window._cronoAreaTemp = null;
+  }
+  cronoEditandoId = null; cronoModoAdicionar = false;
+  document.getElementById('crono-planta-container').style.cursor = '';
+  document.getElementById('crono-modo-badge').style.display = 'none';
+  document.getElementById('crono-btn-adicionar').textContent = '+ Adicionar área';
+  document.getElementById('crono-hint').textContent = 'Passe o mouse sobre uma área para ver o local';
+  await cronoSalvar(); cronoRenderZonas(); cronoRenderLocais(); cronoFecharModal();
+}
+
+function cronoEditarLocal(id) {
+  const l = cronoEstado.locais.find(x => x.id === id);
+  if (!l) return;
+  cronoEditandoId = id;
+  document.getElementById('crono-modal-title').textContent = 'Editar local';
+  document.getElementById('crono-modal-sub').textContent   = l.nome;
+  document.getElementById('crono-modal-nome').value  = l.nome;
+  document.getElementById('crono-modal-drive').value = l.driveUrl || '';
+  document.getElementById('crono-modal-desc').value  = l.desc || '';
+  document.getElementById('crono-modal-pos').style.display = l.left != null ? 'block' : 'none';
+  document.getElementById('crono-modal-pos').textContent = '📐 Área já desenhada na planta';
+  cronoAbrirModal();
+}
+
+function cronoRemoverLocal(id) {
+  if (!confirm('Remover este local? As fotos no Drive não serão afetadas.')) return;
+  cronoEstado.locais = cronoEstado.locais.filter(l => l.id !== id);
+  if (cronoZonaAtiva === id) {
+    cronoZonaAtiva = null;
+    document.getElementById('crono-fotos-title').textContent = 'Selecione um local';
+    document.getElementById('crono-fotos-sub').textContent   = 'Passe o mouse sobre uma área na planta';
+    document.getElementById('crono-fotos-empty').style.display    = 'flex';
+    document.getElementById('crono-fotos-timeline').style.display = 'none';
+  }
+  cronoSalvar(); cronoRenderZonas(); cronoRenderLocais();
+}
+
+function cronoRenderLocais() {
+  const list = document.getElementById('crono-locais-list');
+  if (!cronoEstado.locais.length) {
+    list.innerHTML = `<div style="padding:40px 20px;text-align:center;font-size:12px;color:var(--text2);line-height:1.7;">Nenhuma área cadastrada ainda.<br>Carregue a planta e clique em<br><strong>+ Desenhar área na planta</strong>.</div>`;
+    return;
+  }
+  list.innerHTML = cronoEstado.locais.map((l, i) => `
+    <div class="crono-local-item ${cronoZonaAtiva===l.id?'active':''}" onclick="cronoAbrirZona(cronoEstado.locais.find(x=>x.id==='${l.id}'))">
+      <div class="crono-local-num">${i+1}</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:12px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${l.nome}</div>
+        <div style="font-size:10px;color:var(--text2);margin-top:1px;">${l.folderId ? '✓ Drive configurado' : '⚠ Drive não configurado'}</div>
+      </div>
+      <div class="crono-local-actions">
+        <button onclick="event.stopPropagation();cronoEditarLocal('${l.id}')" style="padding:4px 8px;background:var(--surface2);border:1px solid var(--border);border-radius:4px;font-size:10px;cursor:pointer;color:var(--text2);">Editar</button>
+        <button onclick="event.stopPropagation();cronoRemoverLocal('${l.id}')" style="padding:4px 8px;background:#FEF2F2;border:1px solid #FECACA;border-radius:4px;font-size:10px;cursor:pointer;color:#B91C1C;">✕</button>
+      </div>
+    </div>`).join('');
+}
+
+async function cronoBuscarFotos(folderId) {
+  if (!folderId) return null;
+  try {
+    const res = await fetch(SCRIPT_URL + '?acao=fotos&folder=' + folderId);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const d = await res.json();
+    if (d.erro) throw new Error(d.erro);
+    return d.fotos || [];
+  } catch(e) { console.warn('Apps Script:', e.message); return null; }
+}
+
+// ════════════════════════════════════════════════════════
+//  ABRIR ZONA + TIMELINE AGRUPADA POR MÊS
+// ════════════════════════════════════════════════════════
+async function cronoAbrirZona(local) {
+  if (!local) return;
+  cronoZonaAtiva = local.id;
+  window._cronoLocalNome = local.nome;
+  document.querySelectorAll('.crono-zona-svg').forEach(z => z.classList.remove('active'));
+  document.getElementById('crono-zona-' + local.id)?.classList.add('active');
+  cronoRenderLocais();
+  document.getElementById('crono-fotos-title').textContent = local.nome;
+  document.getElementById('crono-fotos-sub').textContent   = local.desc || 'Buscando fotos...';
+  document.getElementById('crono-fotos-empty').style.display    = 'none';
+  const tl = document.getElementById('crono-fotos-timeline');
+  tl.style.display = 'block';
+  tl.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;gap:8px;height:140px;font-size:12px;color:var(--text2);"><div class="spinner"></div> Carregando...</div>';
+  
+  if (!local.folderId) {
+    tl.innerHTML = `<div style="padding:28px 18px;text-align:center;font-size:12px;color:var(--text2);">Pasta do Drive não configurada.<br><button onclick="cronoEditarLocal('${local.id}')" style="margin-top:10px;padding:6px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;font-size:11px;cursor:pointer;">Configurar agora</button></div>`;
+    return;
+  }
+  const fotos = await cronoBuscarFotos(local.folderId);
+  if (fotos === null) {
+    tl.innerHTML = `<div style="padding:28px 18px;text-align:center;font-size:12px;color:var(--text2);">Erro ao acessar o Drive.<br>Verifique a URL do script e as permissões da pasta.</div>`;
+    return;
+  }
+  if (!fotos.length) {
+    tl.innerHTML = `<div style="padding:28px 18px;text-align:center;font-size:12px;color:var(--text2);">Nenhuma foto encontrada.<br><span style="color:var(--text3);">Adicione imagens na pasta do Drive.</span></div>`;
+    return;
+  }
+  // Ordenar mais antiga → mais recente
+  fotos.sort((a, b) => new Date(a.data||0) - new Date(b.data||0));
+
+  // Montar índice global para lightbox
+  window._cronoFotosLb = fotos.map(f => ({
+    full:  `https://drive.google.com/thumbnail?id=${f.id}&sz=w1600`,
+    thumb: `https://drive.google.com/thumbnail?id=${f.id}&sz=w600`,
+    nome:  f.nome || f.name || '',
+    data:  cronoFmtData(f.data || f.createdTime)
+  }));
+
+  // Atualizar badge da zona
+  const badge = document.getElementById('crono-badge-' + local.id);
+  if (badge) { badge.textContent = fotos.length; badge.style.display = 'inline'; }
+
+  // Agrupar por mês — mais recentes primeiro
+  const grupos = {};
+  fotos.forEach((f, globalIdx) => {
+    const d = new Date(f.data || f.createdTime || 0);
+    const chave = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    if (!grupos[chave]) grupos[chave] = { label: cronoFmtMes(d), fotos:[] };
+    grupos[chave].fotos.push({ ...f, globalIdx });
+  });
+  // Mais recentes no topo
+  const chavesOrdenadas = Object.keys(grupos).sort((a,b) => b.localeCompare(a));
+
+  document.getElementById('crono-fotos-sub').textContent = `${fotos.length} foto${fotos.length>1?'s':''} · ${chavesOrdenadas.length} mês${chavesOrdenadas.length>1?'es':''}`;
+
+  // Renderiza meses visíveis (últimos 2) + botão carregar mais
+  let mesesVisiveis = 2;
+  function renderTimeline() {
+    const visiveis = chavesOrdenadas.slice(0, mesesVisiveis);
+    const temMais  = chavesOrdenadas.length > mesesVisiveis;
+    const restante = chavesOrdenadas.length - mesesVisiveis;
+    tl.innerHTML = visiveis.map(chave => {
+      const g = grupos[chave];
+      const fotosHtml = g.fotos.map(f => `
+        <div class="crono-tl-item">
+          <img class="crono-tl-img" src="https://drive.google.com/thumbnail?id=${f.id}&sz=w600"
+            loading="lazy" alt="${f.nome||''}"
+            onclick="cronoAbreLightbox(${f.globalIdx})"
+            onerror="this.parentElement.style.display='none'">
+          <div class="crono-tl-name">${f.nome||''}</div>
+        </div>`).join('');
+      return `<div class="crono-mes-grupo">
+        <div class="crono-mes-header">
+          <span class="crono-mes-label">${g.label}</span>
+          <span class="crono-mes-count">${g.fotos.length} foto${g.fotos.length>1?'s':''}</span>
+        </div>
+        ${fotosHtml}
+      </div>`;
+    }).join('');
+    if (temMais) {
+      const btn = document.createElement('button');
+      btn.className = 'crono-carregar-mais';
+      btn.textContent = `↓ Carregar meses anteriores (${restante} restante${restante>1?'s':''})`;
+      btn.onclick = () => { mesesVisiveis += 2; renderTimeline(); };
+      tl.appendChild(btn);
+    }
+  }
+  renderTimeline();
+}
+
+function cronoFmtMes(d) {
+  const meses = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  return `${meses[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+function cronoFmtData(iso) {
+  if (!iso) return '—';
+  try {
+    const d = new Date(iso);
+    const dia = String(d.getDate()).padStart(2,'0');
+    const mes = String(d.getMonth()+1).padStart(2,'0');
+    const ano = d.getFullYear();
+    return `${dia}/${mes}/${ano}`;
+  } catch(e){ return iso; }
+}
+
+function cronoSalvarCfg() {
+  // URL agora é fixa no código (SCRIPT_URL)
+}
+
+async function cronoTestarScript() {
+  const url = SCRIPT_URL;
+  const st = document.getElementById('crono-script-status');
+  st.style.display = 'flex';
+  st.innerHTML = '<div class="spinner" style="width:12px;height:12px;border-width:2px;flex-shrink:0;"></div> Testando...';
+  try {
+    const res = await fetch(url + '?folder=test');
+    const d = await res.json();
+    st.innerHTML = '<span style="color:#16A34A;font-weight:600;">✓ Script funcionando!</span>';
+    cronoSalvar();
+  } catch(e) { st.innerHTML = `<span style="color:#B91C1C;">✕ ${e.message}</span>`; }
+}
+
+function cronoExportar() {
+  const { plantaB64, ...cfg } = cronoEstado;
+  const b = new Blob([JSON.stringify(cfg, null, 2)], {type:'application/json'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'cronograma-locais.json'; a.click();
+}
+
+function cronoImportar(e) {
+  const file = e.target.files[0]; if (!file) return;
+  const r = new FileReader();
+  r.onload = ev => { try { cronoEstado = { ...cronoEstado, ...JSON.parse(ev.target.result) }; cronoSalvar(); initCronograma(); alert('Importado!'); } catch(e){ alert('Arquivo inválido.'); } };
+  r.readAsText(file);
+}
+
+function cronoResetar() {
+  if (!confirm('Apagar tudo? Remove a planta e todos os locais.')) return;
+  localStorage.removeItem('crono_v2'); sessionStorage.removeItem('crono_planta_b64'); location.reload();
+}
+
+function cronoAbrirModal() { document.getElementById('crono-modal').style.display = 'flex'; }
+function cronoFecharModal() { document.getElementById('crono-modal').style.display = 'none'; window._cronoAreaTemp = null; }
+
+function cronoAbreLightbox(idx) {
+  window._cronoLbIdx = idx;
+  const fotos = window._cronoFotosLb || [];
+  if (!fotos.length) return;
+  const f = fotos[idx];
+  const localNome = window._cronoLocalNome || '';
+  document.getElementById('crono-lb-img').src = f.full;
+  document.getElementById('crono-lb-nome').textContent = localNome ? `${localNome} · ${f.data}` : f.data;
+  document.getElementById('crono-lb-data').textContent = f.nome;
+  document.getElementById('crono-lb-counter').textContent = `${idx+1} / ${fotos.length}`;
+  document.getElementById('crono-lightbox').classList.add('open');
+  document.querySelector('.crono-lb-prev').style.opacity = idx > 0 ? '1' : '0.2';
+  document.querySelector('.crono-lb-next').style.opacity = idx < fotos.length-1 ? '1' : '0.2';
+  document.querySelector('.crono-lb-prev').style.pointerEvents = idx > 0 ? '' : 'none';
+  document.querySelector('.crono-lb-next').style.pointerEvents = idx < fotos.length-1 ? '' : 'none';
+}
+function cronoLbNavegar(dir) {
+  const fotos = window._cronoFotosLb || [];
+  const novo = (window._cronoLbIdx||0) + dir;
+  if (novo >= 0 && novo < fotos.length) cronoAbreLightbox(novo);
+}
+function cronoFechaLightbox() {
+  document.getElementById('crono-lightbox').classList.remove('open');
+  setTimeout(() => { document.getElementById('crono-lb-img').src = ''; }, 300);
+}
+
+function cronoTrocarAba(id, btn) {
+  document.querySelectorAll('.crono-ptab').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.crono-pane').forEach(p => p.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  document.getElementById('crono-pane-' + id).classList.add('active');
+}
+
+document.addEventListener('keydown', e => {
+  const lb = document.getElementById('crono-lightbox');
+  if (lb.classList.contains('open')) {
+    if (e.key === 'ArrowRight') { e.preventDefault(); cronoLbNavegar(1); return; }
+    if (e.key === 'ArrowLeft')  { e.preventDefault(); cronoLbNavegar(-1); return; }
+    if (e.key === 'Escape')     { cronoFechaLightbox(); return; }
+  }
+  if (e.key==='Escape'){ cronoFecharModal(); }
+});
+document.getElementById('crono-lightbox').addEventListener('click', function(e) {
+  if (e.target === this) cronoFechaLightbox();
+});
+</script>
+</body>
+</html>
