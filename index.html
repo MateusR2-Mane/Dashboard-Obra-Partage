@@ -171,7 +171,7 @@
   /* Retângulo de desenho em progresso */
   #crono-draw-rect { display:none; }
   #crono-draw-svg {
-    position:absolute; inset:0; width:100%; height:100%;
+    position:absolute;
     pointer-events:none; z-index:30; overflow:visible;
   }
   #crono-draw-svg.modo-desenho {
@@ -179,10 +179,10 @@
   }
   .crono-draw-preview {
     fill:rgba(196,113,74,.12); stroke:#C4714A;
-    stroke-width:1.5; stroke-dasharray:5 3;
+    stroke-width:0.003; stroke-dasharray:0.008 0.005;
   }
   .crono-draw-dot {
-    fill:white; stroke:#C4714A; stroke-width:2; cursor:pointer;
+    fill:white; stroke:#C4714A; stroke-width:0.003; cursor:pointer;
   }
   .crono-draw-dot.first { fill:#C4714A; }
   .crono-draw-cursor {
@@ -191,15 +191,23 @@
   /* Zonas como SVG polygon */
   .crono-zona-svg {
     fill:rgba(196,113,74,0); stroke:rgba(196,113,74,0);
-    stroke-width:2; transition:fill .15s,stroke .15s;
+    stroke-width:0.003; transition:fill .15s,stroke .15s;
     cursor:pointer; pointer-events:all;
   }
   .crono-zona-svg:hover { fill:rgba(196,113,74,.15); stroke:rgba(196,113,74,.5); }
-  .crono-zona-svg.active { fill:rgba(196,113,74,.22); stroke:#C4714A; stroke-width:2.5; }
+  .crono-zona-svg.active { fill:rgba(196,113,74,.22); stroke:#C4714A; stroke-width:0.004; }
   .crono-zona-label {
-    pointer-events:none; font-size:12px; font-weight:600;
-    fill:#1C1A17; paint-order:stroke; stroke:white; stroke-width:3px; stroke-linejoin:round;
-    opacity:0; transition:opacity .15s; text-anchor:middle; dominant-baseline:middle;
+    pointer-events:none;
+    font-weight:600;
+    fill:white;
+    paint-order:stroke;
+    stroke:#1C1A17;
+    stroke-width:0.003;
+    stroke-linejoin:round;
+    opacity:0;
+    transition:opacity .15s;
+    text-anchor:middle;
+    dominant-baseline:middle;
   }
   .crono-zona-group:hover .crono-zona-label,
   .crono-zona-group.active .crono-zona-label { opacity:1; }
@@ -339,7 +347,7 @@
       <button class="tab-btn" onclick="trocarAba('janelas',this)">Janelas de Pagamento</button>
       <button class="tab-btn" onclick="trocarAba('detalhamento',this)">Detalhamento de Cards</button>
       <button class="tab-btn" onclick="trocarAba('aprovacao',this)">Aprovação Obra <span class="tab-badge" id="badge-aprov">0</span></button>
-      <button class="tab-btn" onclick="trocarAba('cronograma',this)">Planta da obra</button>
+      <button class="tab-btn" onclick="trocarAba('cronograma',this);setTimeout(cronoAjustarSVG,50);">Planta da obra</button>
     </div>
     <div class="topbar-right">
       <span class="topbar-pipe" id="topbar-pipe">Carregando...</span>
@@ -666,9 +674,9 @@
             <div id="crono-onboard" style="display:none;"></div>
             <input type="file" id="crono-file-input" accept="image/*" style="display:none" onchange="cronoCarregarImagem(event)">
 
-            <!-- Container da planta — sem margens -->
-            <div id="crono-planta-container" style="display:none;position:relative;width:100%;height:100%;">
-              <img id="crono-planta-img" src="" alt="Planta" style="width:100%;height:100%;display:block;pointer-events:none;user-select:none;object-fit:contain;">
+            <!-- Container da planta — proporção fixa 1192x927 -->
+            <div id="crono-planta-container" style="display:none;position:relative;width:100%;aspect-ratio:1192/927;max-height:100%;overflow:hidden;">
+              <img id="crono-planta-img" src="" alt="Planta" style="width:100%;height:100%;display:block;pointer-events:none;user-select:none;object-fit:fill;">
               <svg id="crono-draw-svg"></svg>
             </div>
 
@@ -2660,8 +2668,32 @@ function cronoMostrarPlanta(src) {
   document.getElementById('crono-btn-adicionar').style.display = 'inline-flex';
   const img = document.getElementById('crono-planta-img');
   img.src = src;
-  img.onload = () => { cronoRenderZonas(); cronoIniciarDesenho(); };
+  img.onload = () => {
+    cronoAjustarSVG();
+    cronoRenderZonas();
+    cronoIniciarDesenho();
+  };
 }
+
+function cronoAjustarSVG() {
+  const svg = document.getElementById('crono-draw-svg');
+  const container = document.getElementById('crono-planta-container');
+  if (!svg || !container) return;
+  if (container.offsetWidth === 0) { setTimeout(cronoAjustarSVG, 100); return; }
+  // Container já tem proporção correta da imagem — SVG cobre tudo
+  svg.style.left   = '0';
+  svg.style.top    = '0';
+  svg.style.width  = '100%';
+  svg.style.height = '100%';
+  svg.setAttribute('viewBox', '0 0 1 1');
+  svg.setAttribute('preserveAspectRatio', 'none');
+}
+
+window.addEventListener('resize', () => {
+  if (document.getElementById('crono-planta-container').style.display !== 'none') {
+    cronoAjustarSVG();
+  }
+});
 
 // ════════════════════════════════════════════════════════
 //  MODO DESENHO
@@ -2683,10 +2715,11 @@ function cronoIniciarDesenho() {
   let pts = [];
 
   function svgPt(e) {
-    const r = container.getBoundingClientRect();
+    const r = svg.getBoundingClientRect();
+    // Retorna coordenadas em proporção 0-1 (igual ao viewBox)
     return {
-      x: Math.min(Math.max(e.clientX - r.left, 0), container.offsetWidth),
-      y: Math.min(Math.max(e.clientY - r.top,  0), container.offsetHeight)
+      x: Math.min(Math.max((e.clientX - r.left) / r.width,  0), 1),
+      y: Math.min(Math.max((e.clientY - r.top)  / r.height, 0), 1)
     };
   }
 
@@ -2704,7 +2737,7 @@ function cronoIniciarDesenho() {
     pts.forEach((p, i) => {
       const circ = document.createElementNS('http://www.w3.org/2000/svg','circle');
       circ.setAttribute('cx', p.x); circ.setAttribute('cy', p.y);
-      circ.setAttribute('r', i===0 ? 7 : 5);
+      circ.setAttribute('r', i===0 ? 0.012 : 0.008); // raio em unidades 0-1
       circ.setAttribute('class','crono-draw-dot draw-tmp'+(i===0?' first':''));
       circ.setAttribute('pointer-events','all');
       if (i===0 && pts.length>=3) {
@@ -2718,8 +2751,8 @@ function cronoIniciarDesenho() {
   function fechar() {
     if (pts.length < 3) return;
     svg.querySelectorAll('.draw-tmp').forEach(el => el.remove());
-    const W = container.offsetWidth || 1, H = container.offsetHeight || 1;
-    const pontos = pts.map(p => ({ px: +(p.x/W).toFixed(4), py: +(p.y/H).toFixed(4) }));
+    // pts já estão em 0-1
+    const pontos = pts.map(p => ({ px: +p.x.toFixed(4), py: +p.y.toFixed(4) }));
     pts = [];
     cronoModoAdicionar = false;
     // desliga modo no SVG
@@ -2761,7 +2794,7 @@ function cronoIniciarDesenho() {
     const p = svgPt(e);
     if (pts.length >= 3) {
       const dx = p.x-pts[0].x, dy = p.y-pts[0].y;
-      if (Math.sqrt(dx*dx+dy*dy) < 14) { fechar(); return; }
+      if (Math.sqrt(dx*dx+dy*dy) < 0.02) { fechar(); return; }
     }
     pts.push(p);
     renderPreview(null);
@@ -2806,29 +2839,28 @@ function cronoAtivarDesenhoSVG(ativo) {
 //  RENDER ZONAS
 // ════════════════════════════════════════════════════════
 function cronoRenderZonas() {
-  // Remove zonas antigas (divs legadas + SVG polygons)
   document.querySelectorAll('.crono-zona').forEach(e => e.remove());
   document.querySelectorAll('.crono-zona-svg').forEach(e => e.remove());
   document.querySelectorAll('.crono-zona-group').forEach(e => e.remove());
 
-  const c   = document.getElementById('crono-planta-container');
   const svg = document.getElementById('crono-draw-svg');
-  const img = document.getElementById('crono-planta-img');
-  const W   = c.offsetWidth  || img.offsetWidth  || 1;
-  const H   = c.offsetHeight || img.offsetHeight || 1;
+
+  // viewBox 0 0 1 1 — pontos em proporção, totalmente independente do tamanho da tela
+  svg.setAttribute('viewBox', '0 0 1 1');
+  svg.setAttribute('preserveAspectRatio', 'none');
 
   cronoEstado.locais.forEach(l => {
-    // Suporte a formato antigo (rect) e novo (pontos)
     let pontos;
     if (l.pontos && l.pontos.length) {
-      pontos = l.pontos.map(p => ({ x: p.px * W, y: p.py * H }));
+      // Já estão em proporção (0-1)
+      pontos = l.pontos.map(p => ({ x: p.px, y: p.py }));
     } else if (l.left != null) {
-      const x1 = l.left/100*W,   y1 = l.top/100*H;
-      const x2 = x1+l.width/100*W, y2 = y1+l.height/100*H;
+      // Formato antigo em % → converte para proporção
+      const x1 = l.left/100,        y1 = l.top/100;
+      const x2 = x1+l.width/100,    y2 = y1+l.height/100;
       pontos = [{x:x1,y:y1},{x:x2,y:y1},{x:x2,y:y2},{x:x1,y:y2}];
     } else return;
 
-    // Centróide para o label
     const cx = pontos.reduce((s,p)=>s+p.x,0)/pontos.length;
     const cy = pontos.reduce((s,p)=>s+p.y,0)/pontos.length;
 
@@ -2843,17 +2875,16 @@ function cronoRenderZonas() {
 
     const lbl = document.createElementNS('http://www.w3.org/2000/svg','text');
     lbl.setAttribute('class','crono-zona-label');
-    lbl.setAttribute('x', cx); lbl.setAttribute('y', cy);
+    lbl.setAttribute('x', cx);
+    lbl.setAttribute('y', cy);
+    lbl.setAttribute('font-size', '0.018');
     lbl.textContent = l.nome;
 
-    g.appendChild(poly);
-    g.appendChild(lbl);
-    svg.appendChild(g);
+    g.appendChild(poly); g.appendChild(lbl); svg.appendChild(g);
 
     g.addEventListener('click', ev => {
       if (cronoModoAdicionar) return;
       ev.stopPropagation();
-      // Atualiza active no grupo e no polygon
       document.querySelectorAll('.crono-zona-group').forEach(x=>x.classList.remove('active'));
       document.querySelectorAll('.crono-zona-svg').forEach(x=>x.classList.remove('active'));
       g.classList.add('active'); poly.classList.add('active');
