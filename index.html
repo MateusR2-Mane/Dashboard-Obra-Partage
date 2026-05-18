@@ -2577,7 +2577,10 @@ async function moverCard(cardId, faseId, tipo) {
         <div style="font-size:10px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;">Descrição (opcional)</div>
         <input id="crono-modal-desc" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;background:var(--surface);color:var(--text);font-family:inherit;" placeholder="Ex: Área do bar, piso térreo">
       </div>
-      <div id="crono-modal-pos" style="background:var(--surface2);border-radius:6px;padding:8px 12px;font-size:11px;color:var(--text2);display:none;">📍 Posição na planta registrada</div>
+      <div id="crono-modal-pos" style="background:var(--surface2);border-radius:6px;padding:8px 12px;font-size:11px;color:var(--text2);display:none;align-items:center;justify-content:space-between;gap:8px;">
+        <span id="crono-modal-pos-txt">📐 Área desenhada na planta</span>
+        <button id="crono-modal-redesenhar" onclick="cronoIniciarRedesenho()" style="padding:4px 10px;background:white;border:1px solid var(--border);border-radius:5px;font-size:11px;cursor:pointer;color:var(--text);white-space:nowrap;">✏️ Redesenhar</button>
+      </div>
     </div>
     <div style="padding:12px 22px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;">
       <button onclick="cronoFecharModal()" style="padding:7px 14px;background:none;border:1px solid var(--border);border-radius:6px;font-size:12px;cursor:pointer;color:var(--text);">Cancelar</button>
@@ -2726,15 +2729,28 @@ function cronoIniciarDesenho() {
     document.getElementById('crono-modo-badge').style.display = 'none';
     document.getElementById('crono-btn-adicionar').textContent = '+ Adicionar área';
     document.getElementById('crono-hint').textContent = 'Passe o mouse sobre uma área para ver o local';
-    cronoEditandoId = null;
-    document.getElementById('crono-modal-title').textContent = 'Nova área';
-    document.getElementById('crono-modal-sub').textContent   = pontos.length + ' pontos';
-    document.getElementById('crono-modal-nome').value  = '';
-    document.getElementById('crono-modal-drive').value = '';
-    document.getElementById('crono-modal-desc').value  = '';
-    document.getElementById('crono-modal-pos').style.display = 'block';
-    document.getElementById('crono-modal-pos').textContent = '📐 Forma desenhada';
     window._cronoAreaTemp = { pontos };
+
+    // Se é um redesenho, usa os dados guardados e salva direto
+    if (window._cronoRedesenhoTemp) {
+      const rd = window._cronoRedesenhoTemp;
+      cronoEditandoId = rd.id;
+      document.getElementById('crono-modal-title').textContent = 'Editar local';
+      document.getElementById('crono-modal-sub').textContent   = rd.nome;
+      document.getElementById('crono-modal-nome').value  = rd.nome;
+      document.getElementById('crono-modal-drive').value = rd.drive;
+      document.getElementById('crono-modal-desc').value  = rd.desc;
+      window._cronoRedesenhoTemp = null;
+    } else {
+      cronoEditandoId = null;
+      document.getElementById('crono-modal-title').textContent = 'Nova área';
+      document.getElementById('crono-modal-sub').textContent   = pontos.length + ' pontos';
+      document.getElementById('crono-modal-nome').value  = '';
+      document.getElementById('crono-modal-drive').value = '';
+      document.getElementById('crono-modal-desc').value  = '';
+    }
+    document.getElementById('crono-modal-pos').style.display = 'flex';
+    document.getElementById('crono-modal-pos-txt').textContent = '📐 Forma desenhada';
     cronoAbrirModal();
   }
 
@@ -2890,9 +2906,32 @@ function cronoEditarLocal(id) {
   document.getElementById('crono-modal-nome').value  = l.nome;
   document.getElementById('crono-modal-drive').value = l.driveUrl || '';
   document.getElementById('crono-modal-desc').value  = l.desc || '';
-  document.getElementById('crono-modal-pos').style.display = l.left != null ? 'block' : 'none';
-  document.getElementById('crono-modal-pos').textContent = '📐 Área já desenhada na planta';
+  const temArea = l.pontos?.length || l.left != null;
+  document.getElementById('crono-modal-pos').style.display = temArea ? 'flex' : 'none';
+  document.getElementById('crono-modal-pos-txt').textContent = '📐 Área desenhada na planta';
   cronoAbrirModal();
+}
+
+function cronoIniciarRedesenho() {
+  // Guarda dados do formulário antes de fechar
+  window._cronoRedesenhoTemp = {
+    id:    cronoEditandoId,
+    nome:  document.getElementById('crono-modal-nome').value.trim(),
+    drive: document.getElementById('crono-modal-drive').value.trim(),
+    desc:  document.getElementById('crono-modal-desc').value.trim(),
+  };
+  cronoFecharModal();
+  // Ativa modo de desenho
+  cronoModoAdicionar = true;
+  document.getElementById('crono-planta-container').style.cursor = 'crosshair';
+  cronoAtivarDesenhoSVG(true);
+  document.getElementById('crono-modo-badge').style.display = 'flex';
+  document.getElementById('crono-modo-badge').innerHTML = `
+    <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+    Redesenhando "${window._cronoRedesenhoTemp.nome}" · duplo clique para fechar
+  `;
+  document.getElementById('crono-btn-adicionar').textContent = '✕ Cancelar';
+  document.getElementById('crono-hint').textContent = 'Clique para adicionar pontos · duplo clique para fechar';
 }
 
 function cronoRemoverLocal(id) {
