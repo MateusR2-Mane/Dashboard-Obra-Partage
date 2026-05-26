@@ -558,6 +558,10 @@
             <div class="page-title">Detalhamento de Cards</div>
             <div class="page-sub">Todos os cards com filtros avançados</div>
           </div>
+          <button onclick="exportarExcel()" style="display:flex;align-items:center;gap:7px;padding:8px 16px;background:#1D6F42;color:white;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Exportar Excel
+          </button>
         </div>
 
         <div class="filters" style="margin-bottom:1rem;flex-wrap:wrap;row-gap:8px;">
@@ -1457,7 +1461,64 @@ function renderPaginacao(total, totalPgs) {
     </div>`;
 }
 
-function limparFiltros() {
+function exportarExcel() {
+  const cards = window._cardsP || [];
+  const fDe   = document.getElementById('f-de').value;
+  const fAte  = document.getElementById('f-ate').value;
+  const fS    = document.getElementById('f-status').value;
+  const fF    = document.getElementById('f-fase').value;
+  const fCC   = document.getElementById('f-cc')?.value || 'all';
+  const fP    = document.getElementById('f-pgto').value;
+  const fL    = document.getElementById('f-linha')?.value || 'all';
+  const fNF   = (document.getElementById('f-nf')?.value || '').toLowerCase();
+  const fB    = document.getElementById('f-busca').value.toLowerCase();
+
+  const filtered = cards.filter(c => {
+    if (fS  !== 'all' && c.status !== fS) return false;
+    if (fF  !== 'all' && c.fase !== fF) return false;
+    if (fCC !== 'all' && c.cc_sap !== fCC) return false;
+    if (fP  !== 'all' && c.forma_pgto !== fP) return false;
+    if (fL  !== 'all' && c.linha_orcamento !== fL) return false;
+    if (fNF && !(c.numero_nf_campo || '').toLowerCase().includes(fNF)) return false;
+    if (fB  && !c.titulo.toLowerCase().includes(fB)) return false;
+    if (fDe && c.data_vencimento && toISO(c.data_vencimento) < fDe) return false;
+    if (fAte && c.data_vencimento && toISO(c.data_vencimento) > fAte) return false;
+    if ((fDe || fAte) && !c.data_vencimento) return false;
+    return true;
+  });
+
+  const statusLabel = { pago:'Pago', agendado:'Agendado', semdata:'Sem data', reprovado:'Reprovado' };
+
+  const dados = filtered.map(c => ({
+    'ID':             c.id,
+    'Título':         c.titulo,
+    'Fase':           c.fase || '',
+    'CC SAP':         c.cc_sap || '',
+    'Linha Orç.':     c.linha_orcamento || '',
+    'Nº NF':          c.numero_nf_campo || '',
+    'Vencimento':     c.data_vencimento ? c.data_vencimento.toLocaleDateString('pt-BR') : '',
+    'Forma Pgto':     c.forma_pgto || '',
+    'Valor NF':       c.valor_nf || 0,
+    'Valor Contrato': c.valor_contrato || 0,
+    'Status':         statusLabel[c.status] || c.status,
+    'Link':           c.id ? `https://app.pipefy.com/open-cards/${c.id}` : '',
+  }));
+
+  const ws = XLSX.utils.json_to_sheet(dados);
+
+  // Largura das colunas
+  ws['!cols'] = [
+    {wch:10},{wch:40},{wch:18},{wch:12},{wch:15},
+    {wch:12},{wch:14},{wch:16},{wch:14},{wch:16},{wch:12},{wch:45}
+  ];
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Cards');
+
+  const data = new Date().toLocaleDateString('pt-BR').replace(/\//g,'-');
+  XLSX.writeFile(wb, `detalhamento-cards-${data}.xlsx`);
+}
+
   ['f-de','f-ate','f-nf','f-busca'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
   ['f-status','f-fase','f-cc','f-pgto','f-linha'].forEach(id => { const el = document.getElementById(id); if(el) el.value = 'all'; });
   detPagina = 1;
@@ -3283,5 +3344,6 @@ document.getElementById('crono-lightbox').addEventListener('click', function(e) 
   if (e.target === this) cronoFechaLightbox();
 });
 </script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </body>
 </html>
