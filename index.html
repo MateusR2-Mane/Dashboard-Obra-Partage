@@ -1519,6 +1519,7 @@ function exportarExcel() {
   XLSX.writeFile(wb, `detalhamento-cards-${data}.xlsx`);
 }
 
+function limparFiltros() {
   ['f-de','f-ate','f-nf','f-busca'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
   ['f-status','f-fase','f-cc','f-pgto','f-linha'].forEach(id => { const el = document.getElementById(id); if(el) el.value = 'all'; });
   detPagina = 1;
