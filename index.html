@@ -791,6 +791,7 @@ const CAMPOS = {
   tem_contrato:       'fornecedor_com_contrato',
   linha_orcamento:    'linha_de_or_amento_obra',
   data_emissao_nf:    'data_da_emiss_o_do_documento',
+  razao_social:       'raz_o_social_da_empresa',
 };
 
 // Formas de pagamento que consideram PAGO automaticamente
@@ -1054,12 +1055,14 @@ function processar() {
     }
 
     const linhaOrcamento = limparArray(campo(c, CAMPOS.linha_orcamento));
+    const razaoSocial = limparArray(campo(c, CAMPOS.razao_social));
 
     return {
       id: c.id,
       titulo: c.title || campo(c, CAMPOS.titulo) || '(sem título)',
       cc_sap: limparArray(campo(c, CAMPOS.cc_sap)),
       linha_orcamento: linhaOrcamento,
+      razao_social: razaoSocial,
       numero_nf_campo: limparArray(campo(c, 'n_mero_da_nf_1')) || limparArray(campo(c, 'n_mero_da_nf')),
       valor_nf: valorNF,
       valor_contrato: valorContrato,
@@ -1534,26 +1537,28 @@ function exportarExcel() {
   const statusLabel = { pago:'Pago', agendado:'Agendado', semdata:'Sem data', reprovado:'Reprovado' };
 
   const dados = filtered.map(c => ({
-    'ID':             c.id,
-    'Título':         c.titulo,
-    'Fase':           c.fase || '',
-    'CC SAP':         c.cc_sap || '',
-    'Linha Orç.':     c.linha_orcamento || '',
-    'Nº NF':          c.numero_nf_campo || '',
-    'Vencimento':     c.data_vencimento ? c.data_vencimento.toLocaleDateString('pt-BR') : '',
-    'Forma Pgto':     c.forma_pgto || '',
-    'Valor NF':       c.valor_nf || 0,
-    'Valor Contrato': c.valor_contrato || 0,
-    'Status':         statusLabel[c.status] || c.status,
-    'Link':           c.id ? `https://app.pipefy.com/open-cards/${c.id}` : '',
+    'Número do Pipe':            c.id,
+    'Link do Pipe':               c.id ? `https://app.pipefy.com/open-cards/${c.id}` : '',
+    'Título do Pipe':             c.titulo,
+    'Razão Social da Empresa':    c.razao_social || '',
+    'Número da NF':                c.numero_nf_campo || '',
+    'Data de Competência da NF':  c.data_emissao_nf ? c.data_emissao_nf.toLocaleDateString('pt-BR') : '',
+    'Data de Vencimento da NF':   c.data_vencimento ? c.data_vencimento.toLocaleDateString('pt-BR') : '',
+    'Forma de Pagamento':         c.forma_pgto || '',
+    'Valor NF':                    c.valor_nf || 0,
+    'Valor Contrato':              c.valor_contrato || 0,
+    'Status do Pagamento':        statusLabel[c.status] || c.status,
+    'CC SAP':                      c.cc_sap || '',
+    'Linha de Orçamento':         c.linha_orcamento || '',
   }));
 
   const ws = XLSX.utils.json_to_sheet(dados);
 
   // Largura das colunas
   ws['!cols'] = [
-    {wch:10},{wch:40},{wch:18},{wch:12},{wch:15},
-    {wch:12},{wch:14},{wch:16},{wch:14},{wch:16},{wch:12},{wch:45}
+    {wch:14},{wch:45},{wch:45},{wch:30},{wch:14},
+    {wch:18},{wch:18},{wch:16},{wch:14},{wch:16},
+    {wch:14},{wch:12},{wch:20}
   ];
 
   const wb = XLSX.utils.book_new();
