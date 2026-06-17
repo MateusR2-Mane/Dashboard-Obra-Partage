@@ -1214,8 +1214,8 @@ function renderDash(cards) {
   }
 
   // Barra cronológica
-  const INICIO_OBRA  = new Date('2026-05-01');
-  const FIM_OBRA     = new Date('2026-08-01');
+  const INICIO_OBRA  = new Date('2026-06-11');
+  const FIM_OBRA     = new Date('2026-10-15');
   const hoje         = new Date();
   const totalDias    = Math.ceil((FIM_OBRA - INICIO_OBRA) / 86400000);
   const diasDecorridos = Math.max(0, Math.ceil((hoje - INICIO_OBRA) / 86400000));
@@ -1234,13 +1234,13 @@ function renderDash(cards) {
         <div style="width:${pctTempo}%;height:100%;background:${cronoColor};transition:width .4s;border-radius:6px;"></div>
       </div>
       <div style="display:flex;justify-content:space-between;margin-top:6px;align-items:center;">
-        <span style="font-size:11px;color:var(--text3);">Início: 01/05/2026</span>
+        <span style="font-size:11px;color:var(--text3);">Início: 11/06/2026</span>
         <div style="display:flex;gap:16px;">
           <span style="font-size:11px;color:${cronoColor};font-weight:600;">${pctTempo.toFixed(1)}% do prazo decorrido</span>
           <span style="font-size:11px;color:var(--text3);">● ${diasDecorridos} dias corridos</span>
           <span style="font-size:11px;color:${diasRestantes < 30 ? '#A32D2D' : 'var(--text3)'};">● ${diasRestantes} dias restantes</span>
         </div>
-        <span style="font-size:11px;color:var(--text3);">Fim: 01/08/2026</span>
+        <span style="font-size:11px;color:var(--text3);">Fim: 15/10/2026</span>
       </div>
     `;
   }
