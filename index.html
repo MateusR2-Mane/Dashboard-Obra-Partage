@@ -352,6 +352,7 @@
     </div>
     <div class="topbar-right">
       <span class="topbar-pipe" id="topbar-pipe">Carregando...</span>
+      <span id="auto-refresh-status" style="font-size:11px;color:#8a8f98;margin-right:4px;"></span>
       <button class="btn-sm" onclick="carregarDados()">↻ Atualizar</button>
       <button class="btn-sm danger" onclick="sair()">Sair</button>
     </div>
@@ -811,6 +812,7 @@ function iniciar() {
   document.getElementById('setup-screen').style.display = 'none';
   document.getElementById('dashboard').style.display = 'block';
   carregarDados();
+  iniciarAutoRefresh();
 }
 
 function sair() {
@@ -837,6 +839,7 @@ window.addEventListener('load', () => {
     } else {
       carregarDados();
     }
+    iniciarAutoRefresh();
   }
 });
 
@@ -852,16 +855,24 @@ async function gql(q) {
   return j.data;
 }
 
-async function carregarDados() {
-  document.getElementById('loading').style.display = 'flex';
-  document.getElementById('conteudo').style.display = 'none';
-  _cards = [];
+let _carregando = false;
+
+async function carregarDados(silencioso) {
+  if (_carregando) return; // evita chamadas concorrentes (manual + automática)
+  _carregando = true;
+  if (!silencioso) {
+    document.getElementById('loading').style.display = 'flex';
+    document.getElementById('conteudo').style.display = 'none';
+  } else {
+    setAutoRefreshStatus('Atualizando...');
+  }
+  const cardsNovos = [];
   try {
     const pipeInfo = await gql(`{ pipe(id: ${PIPE_ID}) { name } }`);
-    _pipeName = pipeInfo.pipe.name;
+    const pipeNameNovo = pipeInfo.pipe.name;
     let cursor = null, hasNext = true, pagina = 1;
     while (hasNext) {
-      document.getElementById('loading-text').textContent = `Buscando cards... (página ${pagina})`;
+      if (!silencioso) document.getElementById('loading-text').textContent = `Buscando cards... (página ${pagina})`;
       const after = cursor ? `, after: "${cursor}"` : '';
       const data = await gql(`{
         allCards(pipeId: ${PIPE_ID}, first: 50${after}) {
@@ -876,23 +887,56 @@ async function carregarDados() {
         }
       }`);
       const page = data.allCards;
-      _cards.push(...page.edges.map(e => e.node));
+      cardsNovos.push(...page.edges.map(e => e.node));
       hasNext = page.pageInfo.hasNextPage;
       cursor = page.pageInfo.endCursor;
       pagina++;
     }
+    _cards = cardsNovos;
+    _pipeName = pipeNameNovo;
     localStorage.setItem('pipefy_cache', JSON.stringify({
       cards: _cards, pipeName: _pipeName, timestamp: Date.now()
     }));
     processar();
+    if (silencioso) setAutoRefreshStatus('Atualizado às ' + new Date().toLocaleTimeString('pt-BR'));
   } catch(e) {
-    document.getElementById('loading').style.display = 'none';
-    document.getElementById('setup-screen').style.display = 'flex';
-    document.getElementById('dashboard').style.display = 'none';
-    document.getElementById('setup-error').style.display = 'block';
-    localStorage.removeItem('pipefy_token');
+    if (!silencioso) {
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('setup-screen').style.display = 'flex';
+      document.getElementById('dashboard').style.display = 'none';
+      document.getElementById('setup-error').style.display = 'block';
+      localStorage.removeItem('pipefy_token');
+    } else {
+      setAutoRefreshStatus('Falha na atualização automática');
+    }
+  } finally {
+    _carregando = false;
   }
 }
+
+// ── Auto-atualização ──
+const AUTO_REFRESH_MS = 5 * 60 * 1000; // 5 minutos
+let _autoRefreshTimer = null;
+
+function setAutoRefreshStatus(texto) {
+  const el = document.getElementById('auto-refresh-status');
+  if (el) el.textContent = texto;
+}
+
+function iniciarAutoRefresh() {
+  if (_autoRefreshTimer) clearInterval(_autoRefreshTimer);
+  _autoRefreshTimer = setInterval(() => {
+    if (document.visibilityState === 'visible' && TOKEN) {
+      carregarDados(true);
+    }
+  }, AUTO_REFRESH_MS);
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && TOKEN) {
+    carregarDados(true);
+  }
+});
 
 // ── Helpers ──
 function campo(card, id) {
