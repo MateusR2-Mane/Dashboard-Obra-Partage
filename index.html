@@ -615,18 +615,17 @@
           <div class="table-wrap" style="margin:0;">
             <table>
               <thead><tr>
-                <th class="sortable" onclick="sortDet('id')"       id="dth-id">#</th>
                 <th class="sortable" onclick="sortDet('titulo')"   id="dth-titulo">Título</th>
-                <th class="sortable" onclick="sortDet('fase')"     id="dth-fase">Fase atual</th>
-                <th class="sortable" onclick="sortDet('cc_sap')"   id="dth-cc_sap">CC SAP</th>
+                <th class="sortable" onclick="sortDet('razao')"    id="dth-razao">Razão Social</th>
                 <th class="sortable" onclick="sortDet('linha')"    id="dth-linha">Linha Orç.</th>
-                <th class="sortable" onclick="sortDet('nf')"       id="dth-nf">Nº NF</th>
+                <th class="sortable" onclick="sortDet('comp')"     id="dth-comp">Data Comp.</th>
                 <th class="sortable" onclick="sortDet('venc')"     id="dth-venc">Vencimento</th>
+                <th class="sortable" onclick="sortDet('nf')"       id="dth-nf">Nº NF</th>
                 <th class="sortable" onclick="sortDet('pgto')"     id="dth-pgto">Forma pgto</th>
                 <th class="sortable td-right" onclick="sortDet('valor')"     id="dth-valor">Valor NF</th>
                 <th class="sortable td-right" onclick="sortDet('contrato')"  id="dth-contrato">Contrato</th>
                 <th class="sortable td-right" onclick="sortDet('status')"    id="dth-status">Status</th>
-                <th class="td-center">Card</th>
+                <th class="td-center">Link do Pipe</th>
               </tr></thead>
               <tbody id="tabela-body"></tbody>
               <tfoot id="tabela-foot"></tfoot>
@@ -1403,7 +1402,7 @@ function renderTabela() {
 
   if (detPagina > totalPgs) detPagina = totalPgs;
 
-  applySortHeaders('dth-', _dSort, ['id','titulo','fase','cc_sap','linha','nf','venc','pgto','valor','contrato','status']);
+  applySortHeaders('dth-', _dSort, ['titulo','razao','linha','comp','venc','nf','pgto','valor','contrato','status']);
   const sorted = doSort(filtered, _dSort);
   const pagina = sorted.slice((detPagina - 1) * DET_POR_PAG, detPagina * DET_POR_PAG);
 
@@ -1418,14 +1417,13 @@ function renderTabela() {
   const tfoot = document.getElementById('tabela-foot');
 
   if (!filtered.length) {
-    tbody.innerHTML = `<tr><td colspan="12" style="text-align:center;padding:3rem;color:var(--text3);">Nenhum card encontrado.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="11" style="text-align:center;padding:3rem;color:var(--text3);">Nenhum card encontrado.</td></tr>`;
     tfoot.innerHTML = '';
     renderPaginacao(0, 0);
     return;
   }
 
-  const offset = (detPagina - 1) * DET_POR_PAG;
-  tbody.innerHTML = pagina.map((c, i) => {
+  tbody.innerHTML = pagina.map((c) => {
     const si = sInfo[c.status] || { l: c.status, c: 'badge-gray' };
     const pgtoHtml = c.forma_pgto
       ? `<span class="badge badge-gray" style="font-size:10px;">${c.forma_pgto}</span>`
@@ -1436,13 +1434,12 @@ function renderTabela() {
       ? `<span style="font-size:10px;color:var(--text3);">já contab.</span>`
       : '<span style="color:var(--text3);font-size:11px;">—</span>';
     return `<tr>
-      <td style="color:var(--text3);font-size:11px;">${offset + i + 1}</td>
       <td style="min-width:180px;"><div class="td-title" style="max-width:220px;">${c.titulo}</div><div class="td-sub">#${c.id}</div></td>
-      <td><span class="badge badge-gray" style="font-size:10px;white-space:nowrap;">${c.fase}</span></td>
-      <td style="font-size:12px;color:var(--text2);white-space:nowrap;">${c.cc_sap}</td>
+      <td style="font-size:12px;color:var(--text2);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${c.razao_social||''}">${c.razao_social || '—'}</td>
       <td style="font-size:11px;color:var(--text2);max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${c.linha_orcamento||''}">${c.linha_orcamento || '—'}</td>
-      <td style="font-size:11px;color:var(--text2);white-space:nowrap;">${c.numero_nf_campo || '—'}</td>
+      <td style="font-size:12px;white-space:nowrap;">${fmtData(c.data_emissao_nf)}</td>
       <td style="font-size:12px;white-space:nowrap;">${fmtData(c.data_vencimento)}</td>
+      <td style="font-size:11px;color:var(--text2);white-space:nowrap;">${c.numero_nf_campo || '—'}</td>
       <td>${pgtoHtml}</td>
       <td class="td-right" style="font-weight:500;white-space:nowrap;">${c.valor_nf > 0 ? fmtMoeda(c.valor_nf) : '—'}</td>
       <td class="td-right" style="white-space:nowrap;">${contratoHtml}</td>
@@ -1453,7 +1450,7 @@ function renderTabela() {
 
   const totalContrato = filtered.filter(c => c.tem_contrato === 'Sim').reduce((s,c) => s + c.valor_contrato, 0);
   tfoot.innerHTML = `<tr>
-    <td colspan="8" style="font-size:11px;color:var(--text3);">
+    <td colspan="7" style="font-size:11px;color:var(--text3);">
       ${filtered.length} card(s) encontrado(s) · página ${detPagina} de ${totalPgs}
     </td>
     <td class="td-right" style="font-weight:700;white-space:nowrap;">${fmtMoeda(total)}</td>
@@ -2042,8 +2039,10 @@ function sortVal(c, col) {
     case 'titulo':   return (c.titulo || '').toLowerCase();
     case 'cc_sap':   return (c.cc_sap || '').toLowerCase();
     case 'fase':     return (c.fase || '').toLowerCase();
+    case 'razao':    return (c.razao_social || '').toLowerCase();
     case 'linha':    return (c.linha_orcamento || '').toLowerCase();
     case 'nf':       return (c.numero_nf_campo || '').toLowerCase();
+    case 'comp':     return c.data_emissao_nf ? c.data_emissao_nf.getTime() : Infinity;
     case 'venc':     return c.data_vencimento ? c.data_vencimento.getTime() : Infinity;
     case 'pgto':     return (c.forma_pgto || '').toLowerCase();
     case 'valor':    return c.valor_nf || 0;
