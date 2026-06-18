@@ -1582,7 +1582,7 @@ function exportarExcel() {
     'Data de Vencimento da NF':   c.data_vencimento ? c.data_vencimento.toLocaleDateString('pt-BR') : '',
     'Forma de Pagamento':         c.forma_pgto || '',
     'Valor NF':                    c.valor_nf || 0,
-    'Valor Contrato':              c.valor_contrato || 0,
+    'Valor Contrato':              c.tem_contrato?.startsWith('Sim, mas') ? 'já contab.' : (c.valor_contrato || 0),
     'Status do Pagamento':        statusLabel[c.status] || c.status,
     'CC SAP':                      c.cc_sap || '',
     'Linha de Orçamento':         c.linha_orcamento || '',
