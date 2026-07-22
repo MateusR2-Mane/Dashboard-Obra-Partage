@@ -374,7 +374,7 @@
         <div class="updated" id="updated-at"></div>
       </div>
 
-      <div class="metrics" id="metrics-globais"></div>
+      <div class="metrics" id="metrics-globais" style="display:flex;flex-direction:column;gap:1.25rem;"></div>
 
       <div id="saldo-info" style="padding:8px 4px;margin-bottom:1rem;display:flex;align-items:center;flex-wrap:wrap;gap:4px;"></div>
 
@@ -461,6 +461,8 @@
           </table>
         </div>
       </div>
+
+      <!-- Painel Operações Gastronômicas — incorporado ao metrics-globais acima -->
 
       </div><!-- /panel-visao-geral -->
 
@@ -1115,32 +1117,36 @@ function processar() {
 }
 
 // ── Render principal ──
-const ORCAMENTO_TOTAL = 7097685.47;
+const ORCAMENTO_TOTAL = 7185475.22;
+const ORCAMENTO_OPERADORES = 1508000.00;
 
 const LINHAS_ORCAMENTO = {
-  'PROJETOS E ESTUDOS':              450000.00,
+  'PROJETOS E ESTUDOS':              443000.00,
   'SERVIÇOS TÉCNICOS E DEMOLIÇÕES':   72127.06,
   'DESPESAS GERAIS':                 297178.90,
   'SERVIÇOS PRELIMINARES':            80458.10,
   'TERRAPLANAGEM E LOCAÇÃO':           5257.14,
-  'ESTRUTURA':                        69771.15,
-  'COBERTURA':                       205176.42,
-  'PAREDE / PAINEIS':                231588.69,
+  'ESTRUTURA':                        57161.55,
+  'COBERTURA':                       107976.42,
+  'PAREDE / PAINEIS':                223717.49,
   'ESQUADRIAS / FERRAGENS':          211691.22,
-  'IMPERMEABILIZAÇÃO':                45500.00,
+  'IMPERMEABILIZAÇÃO':                12350.00,
   'VIDROS':                          165456.00,
-  'REVESTIMENTO INTERNO':             77070.33,
-  'REVESTIMENTO EM TETO':            216498.10,
-  'PAVIMENTAÇÃO':                    542685.19,
+  'REVESTIMENTO INTERNO':             57658.59,
+  'REVESTIMENTO EM TETO':            710732.76,
+  'PAVIMENTAÇÃO':                    421195.35,
   'SOLEIRAS':                         19393.40,
   'PINTURA INTERNA':                  64556.30,
   'BANCADAS':                         59780.00,
-  'INSTALAÇÕES':                    1259850.48,
-  'LOUÇAS':                               0.00,
-  'MÁQUINAS E EQUIPAMENTOS':              0.00,
+  'LOUÇAS':                           53740.98,
+  'INSTALAÇÕES':                    1695450.48,
+  'MÁQUINAS E EQUIPAMENTOS':         262946.49,
   'CLIMATIZAÇÃO':                    575000.00,
-  'ABERTURA MANÉ':                   628647.00,
-  'OPERAÇÕES GASTRONÔMICAS':        1820000.00,
+  'ABERTURA MANÉ':                  1588647.00,
+};
+
+const LINHAS_OPERADORES = {
+  'OPERADORES':                     1508000.00,
 };
 
 function renderDash(cards) {
@@ -1154,63 +1160,118 @@ function renderDash(cards) {
   const pagos     = cards.filter(c => c.status === 'pago');
   const agendados = cards.filter(c => c.status === 'agendado');
 
-  const totalComprometido = ativos.filter(c => c.valor_comprometido > 0).reduce((s, c) => s + c.valor_comprometido, 0);
-  const totalPago         = pagos.reduce((s, c) => s + c.valor_nf, 0);
-  const totalAgendado     = agendados.reduce((s, c) => s + c.valor_nf, 0);
+  // Separar obra vs operadores
+  const ativosObra = ativos.filter(c => c.linha_orcamento !== 'OPERADORES');
+  const ativosOp   = ativos.filter(c => c.linha_orcamento === 'OPERADORES');
+  const pagosObra  = pagos.filter(c => c.linha_orcamento !== 'OPERADORES');
+  const pagosOp    = pagos.filter(c => c.linha_orcamento === 'OPERADORES');
+
+  // ── Painel OBRA ──
+  const totalComprometido = ativosObra.filter(c => c.valor_comprometido > 0).reduce((s, c) => s + c.valor_comprometido, 0);
+  const totalPago         = pagosObra.reduce((s, c) => s + c.valor_nf, 0);
   const totalDisponivel   = ORCAMENTO_TOTAL - totalComprometido;
   const saldoContratos    = totalComprometido - totalPago;
   const pctComprometido   = Math.min(100, (totalComprometido / ORCAMENTO_TOTAL * 100)).toFixed(1);
   const pctDisponivel     = Math.max(0, (totalDisponivel / ORCAMENTO_TOTAL * 100)).toFixed(1);
-  const cardsComContrato = ativos.filter(c => c.tem_contrato === 'Sim' && c.valor_contrato > 0).length;
+  const cardsComContrato  = ativosObra.filter(c => c.tem_contrato === 'Sim' && c.valor_contrato > 0).length;
+
+  // ── Painel OPERADORES ──
+  const totalComprOp  = ativosOp.filter(c => c.valor_comprometido > 0).reduce((s, c) => s + c.valor_comprometido, 0);
+  const totalPagoOp   = pagosOp.reduce((s, c) => s + c.valor_nf, 0);
+  const totalDispOp   = ORCAMENTO_OPERADORES - totalComprOp;
+  const saldoOp       = totalComprOp - totalPagoOp;
+  const pctComprOp    = Math.min(100, (totalComprOp / ORCAMENTO_OPERADORES * 100)).toFixed(1);
+  const pctDispOp     = Math.max(0, (totalDispOp / ORCAMENTO_OPERADORES * 100)).toFixed(1);
+  const cardsContOp   = ativosOp.filter(c => c.tem_contrato === 'Sim' && c.valor_contrato > 0).length;
 
   document.getElementById('metrics-globais').innerHTML = `
-    <div class="metric" style="border-left:3px solid #555;">
-      <div class="metric-label">Orçamento da obra</div>
-      <div class="metric-value">${fmtMoeda(ORCAMENTO_TOTAL)}</div>
-      <div class="metric-sub">Total disponibilizado</div>
+    <div style="width:100%;margin-bottom:1.25rem;">
+      <div style="font-size:11px;font-weight:700;color:var(--text3);letter-spacing:.07em;text-transform:uppercase;margin-bottom:8px;">Obra</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;">
+        <div class="metric" style="border-left:3px solid #555;margin:0;">
+          <div class="metric-label">Orçamento da obra</div>
+          <div class="metric-value">${fmtMoeda(ORCAMENTO_TOTAL)}</div>
+          <div class="metric-sub">Total disponibilizado</div>
+        </div>
+        <div class="metric" style="border-left:3px solid #7F77DD;margin:0;">
+          <div class="metric-label">Contratado</div>
+          <div class="metric-value" style="color:#5B4FCF;">${fmtMoeda(totalComprometido)}</div>
+          <div class="metric-sub">${pctComprometido}% do orçamento · ${cardsComContrato} c/ contrato</div>
+        </div>
+        <div class="metric" style="border-left:3px solid ${totalDisponivel < 0 ? '#A32D2D' : '#1D9E75'};margin:0;">
+          <div class="metric-label">Disponível no orçamento</div>
+          <div class="metric-value ${totalDisponivel < 0 ? 'red' : 'green'}">${fmtMoeda(Math.abs(totalDisponivel))}</div>
+          <div class="metric-sub">${totalDisponivel < 0 ? '⚠️ Acima do orçamento' : pctDisponivel + '% restante'}</div>
+        </div>
+        <div class="metric" style="border-left:3px solid #3B6D11;margin:0;">
+          <div class="metric-label">Pago</div>
+          <div class="metric-value green">${fmtMoeda(totalPago)}</div>
+          <div class="metric-sub">${pagosObra.length} NFs confirmadas</div>
+        </div>
+      </div>
     </div>
-    <div class="metric" style="border-left:3px solid #7F77DD;">
-      <div class="metric-label">Contratado</div>
-      <div class="metric-value" style="color:#5B4FCF;">${fmtMoeda(totalComprometido)}</div>
-      <div class="metric-sub">${pctComprometido}% do orçamento · ${cardsComContrato} c/ contrato</div>
-    </div>
-    <div class="metric" style="border-left:3px solid ${totalDisponivel < 0 ? '#A32D2D' : '#1D9E75'};">
-      <div class="metric-label">Disponível no orçamento</div>
-      <div class="metric-value ${totalDisponivel < 0 ? 'red' : 'green'}">${fmtMoeda(Math.abs(totalDisponivel))}</div>
-      <div class="metric-sub">${totalDisponivel < 0 ? '⚠️ Acima do orçamento' : pctDisponivel + '% restante'}</div>
-    </div>
-    <div class="metric" style="border-left:3px solid #3B6D11;">
-      <div class="metric-label">Pago</div>
-      <div class="metric-value green">${fmtMoeda(totalPago)}</div>
-      <div class="metric-sub">${pagos.length} NFs confirmadas</div>
+    <div style="width:100%;">
+      <div style="font-size:11px;font-weight:700;color:#A32D2D;letter-spacing:.07em;text-transform:uppercase;margin-bottom:8px;">Operações Gastronômicas</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;">
+        <div class="metric" style="border-left:3px solid #A32D2D;margin:0;">
+          <div class="metric-label">Orçamento operações</div>
+          <div class="metric-value" style="color:#A32D2D;">${fmtMoeda(ORCAMENTO_OPERADORES)}</div>
+          <div class="metric-sub">Total disponibilizado</div>
+        </div>
+        <div class="metric" style="border-left:3px solid #A32D2D;margin:0;">
+          <div class="metric-label">Contratado</div>
+          <div class="metric-value" style="color:#A32D2D;">${fmtMoeda(totalComprOp)}</div>
+          <div class="metric-sub">${pctComprOp}% do orçamento · ${cardsContOp} c/ contrato</div>
+        </div>
+        <div class="metric" style="border-left:3px solid #A32D2D;margin:0;">
+          <div class="metric-label">Disponível no orçamento</div>
+          <div class="metric-value" style="color:#A32D2D;">${fmtMoeda(Math.abs(totalDispOp))}</div>
+          <div class="metric-sub">${totalDispOp < 0 ? '⚠️ Acima do orçamento' : pctDispOp + '% restante'}</div>
+        </div>
+        <div class="metric" style="border-left:3px solid #A32D2D;margin:0;">
+          <div class="metric-label">Pago</div>
+          <div class="metric-value" style="color:#A32D2D;">${fmtMoeda(totalPagoOp)}</div>
+          <div class="metric-sub">${pagosOp.length} NFs confirmadas</div>
+        </div>
+      </div>
     </div>
   `;
 
-  // Saldo menor abaixo dos 4 cards
+  // Saldo menor abaixo dos 4 cards — Obra
   document.getElementById('saldo-info').innerHTML = `
     <span style="font-size:12px;color:var(--text2);font-weight:500;">Saldo a pagar nos contratos:</span>
     <span style="font-size:15px;font-weight:700;color:#BA7517;margin-left:10px;">${fmtMoeda(saldoContratos)}</span>
     <span style="font-size:11px;color:var(--text3);margin-left:10px;">Contratado (${fmtMoeda(totalComprometido)}) − Pago (${fmtMoeda(totalPago)})</span>
   `;
 
-  // Barra de progresso
+  // Barra de orçamento — Obra
   const barEl = document.getElementById('orcamento-bar');
   if (barEl) {
-    const pctPago  = Math.min(100, totalPago / ORCAMENTO_TOTAL * 100);
-    const pctSaldo = Math.min(100 - pctPago, saldoContratos > 0 ? saldoContratos / ORCAMENTO_TOTAL * 100 : 0);
+    const orcTotal    = ORCAMENTO_TOTAL + ORCAMENTO_OPERADORES;
+    const pctPagoObra = Math.min(100, totalPago    / orcTotal * 100);
+    const pctSaldoObra= Math.min(100 - pctPagoObra, saldoContratos > 0 ? Math.min(saldoContratos / orcTotal * 100, 100 - pctPagoObra) : 0);
+    const pctPagoOp_  = Math.min(100 - pctPagoObra - pctSaldoObra, totalPagoOp / orcTotal * 100);
+    const pctSaldoOp_ = Math.min(100 - pctPagoObra - pctSaldoObra - pctPagoOp_, saldoOp > 0 ? saldoOp / orcTotal * 100 : 0);
+    const totalPagoGeral = totalPago + totalPagoOp;
+    const totalComprGeral = totalComprometido + totalComprOp;
+    const totalDispGeral  = orcTotal - totalComprGeral;
     barEl.innerHTML = `
       <div style="display:flex;align-items:center;margin-bottom:6px;">
-        <span style="font-size:12px;color:var(--text2);font-weight:500;">Uso do orçamento</span>
-        <span style="font-size:12px;color:var(--text3);margin-left:auto;">${fmtCurto(totalComprometido)} comprometido de ${fmtCurto(ORCAMENTO_TOTAL)}</span>
+        <span style="font-size:12px;color:var(--text2);font-weight:500;">Uso do orçamento — Geral</span>
+        <span style="font-size:12px;color:var(--text3);margin-left:auto;">${fmtCurto(totalComprGeral)} comprometido de ${fmtCurto(orcTotal)} · <strong style="color:var(--text2);">${(totalComprGeral/orcTotal*100).toFixed(1)}% usado</strong></span>
       </div>
       <div style="height:12px;border-radius:6px;background:var(--border);overflow:hidden;display:flex;">
-        <div style="width:${pctPago}%;background:#3B6D11;transition:width .4s;" title="Pago: ${fmtMoeda(totalPago)}"></div>
-        <div style="width:${pctSaldo}%;background:#EF9F27;transition:width .4s;" title="Saldo contrato: ${fmtMoeda(saldoContratos)}"></div>
+        <div style="width:${pctPagoObra}%;background:#3B6D11;transition:width .4s;" title="Pago Obra: ${fmtMoeda(totalPago)}"></div>
+        <div style="width:${pctSaldoObra}%;background:#EF9F27;transition:width .4s;" title="Saldo Obra: ${fmtMoeda(saldoContratos)}"></div>
+        <div style="width:${pctPagoOp_}%;background:#A32D2D;transition:width .4s;" title="Pago Operações: ${fmtMoeda(totalPagoOp)}"></div>
+        <div style="width:${pctSaldoOp_}%;background:#e07070;transition:width .4s;" title="Saldo Operações: ${fmtMoeda(saldoOp)}"></div>
       </div>
-      <div style="display:flex;gap:16px;margin-top:6px;">
-        <span style="font-size:11px;color:#3B6D11;">● Pago ${fmtCurto(totalPago)}</span>
-        <span style="font-size:11px;color:#EF9F27;">● Saldo contrato ${fmtCurto(saldoContratos)}</span>
-        <span style="font-size:11px;color:var(--text3);">● Disponível ${fmtCurto(Math.max(0, totalDisponivel))}</span>
+      <div style="display:flex;gap:16px;margin-top:6px;flex-wrap:wrap;">
+        <span style="font-size:11px;color:#3B6D11;">● Pago obra ${fmtCurto(totalPago)}</span>
+        <span style="font-size:11px;color:#EF9F27;">● Saldo obra ${fmtCurto(saldoContratos)}</span>
+        <span style="font-size:11px;color:#A32D2D;">● Pago operações ${fmtCurto(totalPagoOp)}</span>
+        <span style="font-size:11px;color:#e07070;">● Saldo operações ${fmtCurto(saldoOp)}</span>
+        <span style="font-size:11px;color:var(--text3);">● Disponível ${fmtCurto(Math.max(0, totalDispGeral))}</span>
       </div>
     `;
   }
@@ -1264,8 +1325,7 @@ function renderDash(cards) {
 
   window._cardsP = cards;
   renderTabela();
-  renderLinhasOrcamento(cards);
-  iniciarFiltrosFG(cards);
+  renderLinhasOrcamento(cards);  iniciarFiltrosFG(cards);
   renderChartFechadoGasto();
 
   document.getElementById('loading').style.display = 'none';
@@ -1290,24 +1350,24 @@ function renderLinhasOrcamento(cards) {
   const busca  = (document.getElementById('busca-linha')?.value || '').toLowerCase();
   const filtro = document.getElementById('filtro-linha-status')?.value || 'all';
 
-  // Agrupa contratado por linha de orçamento (nome exato)
   const contratadoMap = {};
   ativos.filter(c => c.valor_comprometido > 0 && c.linha_orcamento).forEach(c => {
     const k = c.linha_orcamento.trim();
     contratadoMap[k] = (contratadoMap[k] || 0) + c.valor_comprometido;
   });
 
-  // Todas as linhas: definidas + eventuais novas que apareçam nos cards
   const todasLinhas = new Set([
     ...Object.keys(LINHAS_ORCAMENTO),
+    ...Object.keys(LINHAS_OPERADORES),
     ...ativos.filter(c => c.linha_orcamento).map(c => c.linha_orcamento.trim())
   ]);
 
-  const totalOrcamento = Object.values(LINHAS_ORCAMENTO).reduce((s,v) => s+v, 0);
+  const totalOrcamento = Object.values(LINHAS_ORCAMENTO).reduce((s,v) => s+v, 0)
+                       + Object.values(LINHAS_OPERADORES).reduce((s,v) => s+v, 0);
   let totalOrc = 0, totalCont = 0, totalDisp = 0;
 
   let linhas = [...todasLinhas].map(nome => {
-    const orc  = LINHAS_ORCAMENTO[nome] || 0;
+    const orc  = (LINHAS_ORCAMENTO[nome] || 0) + (LINHAS_OPERADORES[nome] || 0);
     const cont = contratadoMap[nome] || 0;
     const disp = orc - cont;
     const real = orc > 0 ? (cont / orc * 100) : null;
@@ -1315,13 +1375,11 @@ function renderLinhasOrcamento(cards) {
     return { nome, orc, cont, disp, real, pct };
   });
 
-  // Filtros
   if (busca) linhas = linhas.filter(l => l.nome.toLowerCase().includes(busca));
   if (filtro === 'com')     linhas = linhas.filter(l => l.cont > 0);
   if (filtro === 'sem')     linhas = linhas.filter(l => l.cont === 0);
   if (filtro === 'critico') linhas = linhas.filter(l => l.orc > 0 && l.cont > l.orc);
 
-  // Ordena
   linhas.sort((a, b) => {
     let va = a[_linhasSortCol], vb = b[_linhasSortCol];
     if (_linhasSortCol === 'nome') { va = a.nome; vb = b.nome; }
@@ -1330,7 +1388,6 @@ function renderLinhasOrcamento(cards) {
     return _linhasSortAsc ? res : -res;
   });
 
-  // Atualiza ícones
   ['nome','orc','cont','disp','real','pct'].forEach(col => {
     const el = document.getElementById('sort-icon-' + col);
     if (el) el.textContent = col === _linhasSortCol ? (_linhasSortAsc ? '↑' : '↓') : '↕';
@@ -1339,7 +1396,6 @@ function renderLinhasOrcamento(cards) {
   linhas.forEach(l => { totalOrc += l.orc; totalCont += l.cont; totalDisp += l.disp; });
 
   const totalReal = totalOrc > 0 ? (totalCont / totalOrc * 100).toFixed(1) : '—';
-  const totalPct  = totalOrcamento > 0 ? '100,00%' : '—';
 
   document.getElementById('linhas-body').innerHTML = linhas.map(l => {
     const dispColor  = l.orc > 0 && l.disp < 0 ? '#A32D2D' : l.disp === 0 ? 'var(--text3)' : 'var(--text)';
@@ -1351,7 +1407,6 @@ function renderLinhasOrcamento(cards) {
     const barW       = l.real !== null ? Math.min(100, l.real) : 0;
     const barColor   = l.real > 100 ? '#A32D2D' : l.real > 80 ? '#EF9F27' : '#3B6D11';
     const semOrc     = l.orc === 0 && l.cont > 0;
-
     return `<tr${semOrc ? ' style="background:rgba(239,159,39,0.05);"' : ''}>
       <td style="font-weight:500;font-size:12px;">
         ${l.nome}
@@ -1376,7 +1431,7 @@ function renderLinhasOrcamento(cards) {
       <td class="td-right" style="color:#5B4FCF;">${fmtMoeda(totalCont)}</td>
       <td class="td-right" style="color:${totalDispColor};">${totalOrc > 0 ? fmtMoeda(totalDisp) : '—'}</td>
       <td class="td-right">${totalReal !== '—' ? totalReal + '%' : '—'}</td>
-      <td class="td-right">${totalPct}</td>
+      <td class="td-right">100,00%</td>
     </tr>`;
 }
 
