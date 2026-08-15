@@ -1235,6 +1235,31 @@ function renderDash(cards) {
         </div>
       </div>
     </div>
+    <div style="width:100%;">
+      <div style="font-size:11px;font-weight:700;color:#185FA5;letter-spacing:.07em;text-transform:uppercase;margin-bottom:8px;">Total Geral</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;">
+        <div class="metric" style="border-left:3px solid #185FA5;margin:0;">
+          <div class="metric-label">Orçamento total</div>
+          <div class="metric-value" style="color:#185FA5;">${fmtMoeda(ORCAMENTO_TOTAL + ORCAMENTO_OPERADORES)}</div>
+          <div class="metric-sub">Total disponibilizado</div>
+        </div>
+        <div class="metric" style="border-left:3px solid #185FA5;margin:0;">
+          <div class="metric-label">Contratado</div>
+          <div class="metric-value" style="color:#185FA5;">${fmtMoeda(totalComprometido + totalComprOp)}</div>
+          <div class="metric-sub">${((totalComprometido + totalComprOp) / (ORCAMENTO_TOTAL + ORCAMENTO_OPERADORES) * 100).toFixed(1)}% do orçamento · ${cardsComContrato + cardsContOp} c/ contrato</div>
+        </div>
+        <div class="metric" style="border-left:3px solid #185FA5;margin:0;">
+          <div class="metric-label">Disponível no orçamento</div>
+          <div class="metric-value" style="color:#185FA5;">${fmtMoeda(Math.abs(totalDisponivel + totalDispOp))}</div>
+          <div class="metric-sub">${(totalDisponivel + totalDispOp) < 0 ? '⚠️ Acima do orçamento' : (Math.max(0,(totalDisponivel + totalDispOp)/(ORCAMENTO_TOTAL + ORCAMENTO_OPERADORES)*100)).toFixed(1) + '% restante'}</div>
+        </div>
+        <div class="metric" style="border-left:3px solid #185FA5;margin:0;">
+          <div class="metric-label">Pago</div>
+          <div class="metric-value" style="color:#185FA5;">${fmtMoeda(totalPago + totalPagoOp)}</div>
+          <div class="metric-sub">${pagosObra.length + pagosOp.length} NFs confirmadas</div>
+        </div>
+      </div>
+    </div>
   `;
 
   // Saldo menor abaixo dos 4 cards — Obra
