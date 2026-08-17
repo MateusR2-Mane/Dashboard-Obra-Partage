@@ -1188,49 +1188,49 @@ function renderDash(cards) {
     <div style="width:100%;margin-bottom:1.25rem;">
       <div style="font-size:11px;font-weight:700;color:var(--text3);letter-spacing:.07em;text-transform:uppercase;margin-bottom:8px;">Obra</div>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;">
-        <div class="metric" style="border-left:3px solid #555;margin:0;">
+        <div class="metric" style="border-left:3px solid #aaa;margin:0;">
           <div class="metric-label">Orçamento da obra</div>
-          <div class="metric-value">${fmtMoeda(ORCAMENTO_TOTAL)}</div>
+          <div class="metric-value" style="color:#888;">${fmtMoeda(ORCAMENTO_TOTAL)}</div>
           <div class="metric-sub">Total disponibilizado</div>
         </div>
-        <div class="metric" style="border-left:3px solid #7F77DD;margin:0;">
+        <div class="metric" style="border-left:3px solid #aaa;margin:0;">
           <div class="metric-label">Contratado</div>
-          <div class="metric-value" style="color:#5B4FCF;">${fmtMoeda(totalComprometido)}</div>
+          <div class="metric-value" style="color:#888;">${fmtMoeda(totalComprometido)}</div>
           <div class="metric-sub">${pctComprometido}% do orçamento · ${cardsComContrato} c/ contrato</div>
         </div>
-        <div class="metric" style="border-left:3px solid ${totalDisponivel < 0 ? '#A32D2D' : '#1D9E75'};margin:0;">
+        <div class="metric" style="border-left:3px solid #aaa;margin:0;">
           <div class="metric-label">Disponível no orçamento</div>
-          <div class="metric-value ${totalDisponivel < 0 ? 'red' : 'green'}">${fmtMoeda(Math.abs(totalDisponivel))}</div>
+          <div class="metric-value" style="color:#888;">${fmtMoeda(Math.abs(totalDisponivel))}</div>
           <div class="metric-sub">${totalDisponivel < 0 ? '⚠️ Acima do orçamento' : pctDisponivel + '% restante'}</div>
         </div>
-        <div class="metric" style="border-left:3px solid #3B6D11;margin:0;">
+        <div class="metric" style="border-left:3px solid #aaa;margin:0;">
           <div class="metric-label">Pago</div>
-          <div class="metric-value green">${fmtMoeda(totalPago)}</div>
+          <div class="metric-value" style="color:#888;">${fmtMoeda(totalPago)}</div>
           <div class="metric-sub">${pagosObra.length} NFs confirmadas</div>
         </div>
       </div>
     </div>
     <div style="width:100%;">
-      <div style="font-size:11px;font-weight:700;color:#A32D2D;letter-spacing:.07em;text-transform:uppercase;margin-bottom:8px;">Operações Gastronômicas</div>
+      <div style="font-size:11px;font-weight:700;color:var(--text3);letter-spacing:.07em;text-transform:uppercase;margin-bottom:8px;">Operações Gastronômicas</div>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;">
-        <div class="metric" style="border-left:3px solid #A32D2D;margin:0;">
+        <div class="metric" style="border-left:3px solid #aaa;margin:0;">
           <div class="metric-label">Orçamento operações</div>
-          <div class="metric-value" style="color:#A32D2D;">${fmtMoeda(ORCAMENTO_OPERADORES)}</div>
+          <div class="metric-value" style="color:#888;">${fmtMoeda(ORCAMENTO_OPERADORES)}</div>
           <div class="metric-sub">Total disponibilizado</div>
         </div>
-        <div class="metric" style="border-left:3px solid #A32D2D;margin:0;">
+        <div class="metric" style="border-left:3px solid #aaa;margin:0;">
           <div class="metric-label">Contratado</div>
-          <div class="metric-value" style="color:#A32D2D;">${fmtMoeda(totalComprOp)}</div>
+          <div class="metric-value" style="color:#888;">${fmtMoeda(totalComprOp)}</div>
           <div class="metric-sub">${pctComprOp}% do orçamento · ${cardsContOp} c/ contrato</div>
         </div>
-        <div class="metric" style="border-left:3px solid #A32D2D;margin:0;">
+        <div class="metric" style="border-left:3px solid #aaa;margin:0;">
           <div class="metric-label">Disponível no orçamento</div>
-          <div class="metric-value" style="color:#A32D2D;">${fmtMoeda(Math.abs(totalDispOp))}</div>
+          <div class="metric-value" style="color:#888;">${fmtMoeda(Math.abs(totalDispOp))}</div>
           <div class="metric-sub">${totalDispOp < 0 ? '⚠️ Acima do orçamento' : pctDispOp + '% restante'}</div>
         </div>
-        <div class="metric" style="border-left:3px solid #A32D2D;margin:0;">
+        <div class="metric" style="border-left:3px solid #aaa;margin:0;">
           <div class="metric-label">Pago</div>
-          <div class="metric-value" style="color:#A32D2D;">${fmtMoeda(totalPagoOp)}</div>
+          <div class="metric-value" style="color:#888;">${fmtMoeda(totalPagoOp)}</div>
           <div class="metric-sub">${pagosOp.length} NFs confirmadas</div>
         </div>
       </div>
@@ -1245,7 +1245,7 @@ function renderDash(cards) {
         </div>
         <div class="metric" style="border-left:3px solid #185FA5;margin:0;">
           <div class="metric-label">Contratado</div>
-          <div class="metric-value" style="color:#185FA5;">${fmtMoeda(totalComprometido + totalComprOp)}</div>
+          <div class="metric-value" style="color:#185FA5;font-weight:700;">${fmtMoeda(totalComprometido + totalComprOp)}</div>
           <div class="metric-sub">${((totalComprometido + totalComprOp) / (ORCAMENTO_TOTAL + ORCAMENTO_OPERADORES) * 100).toFixed(1)}% do orçamento · ${cardsComContrato + cardsContOp} c/ contrato</div>
         </div>
         <div class="metric" style="border-left:3px solid #185FA5;margin:0;">
@@ -1255,7 +1255,7 @@ function renderDash(cards) {
         </div>
         <div class="metric" style="border-left:3px solid #185FA5;margin:0;">
           <div class="metric-label">Pago</div>
-          <div class="metric-value" style="color:#185FA5;">${fmtMoeda(totalPago + totalPagoOp)}</div>
+          <div class="metric-value" style="color:#185FA5;font-weight:700;">${fmtMoeda(totalPago + totalPagoOp)}</div>
           <div class="metric-sub">${pagosObra.length + pagosOp.length} NFs confirmadas</div>
         </div>
       </div>
